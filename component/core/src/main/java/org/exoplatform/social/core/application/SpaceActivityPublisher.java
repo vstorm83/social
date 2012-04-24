@@ -16,7 +16,6 @@
  */
 package org.exoplatform.social.core.application;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -30,6 +29,7 @@ import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
+import org.exoplatform.social.core.processor.ActivityTemplateParamsUtil;
 import org.exoplatform.social.core.space.SpaceListenerPlugin;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceLifeCycleEvent;
@@ -101,7 +101,6 @@ public class SpaceActivityPublisher extends SpaceListenerPlugin {
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put(SPACE_DISPLAY_NAME_PARAM, space.getDisplayName());
     templateParams.put(USER_NAME_PARAM, "@" + event.getTarget());
-    templateParams.put(BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, USER_NAME_PARAM);
     recordActivity(event, createActivity(event, activityMessage, "space_created", templateParams));
   }
 
@@ -159,7 +158,6 @@ public class SpaceActivityPublisher extends SpaceListenerPlugin {
     final String activityMessage = "@" + event.getTarget() + " was granted manager role.";
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put(USER_NAME_PARAM, "@" + event.getTarget());
-    templateParams.put(BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, USER_NAME_PARAM);
     recordActivity(event, createActivity(event, activityMessage, "manager_role_granted", templateParams));
     LOG.debug("user " + event.getTarget() + " was granted manager role of space " + space.getDisplayName());
   }
@@ -172,7 +170,6 @@ public class SpaceActivityPublisher extends SpaceListenerPlugin {
     final String activityMessage = "@" + event.getTarget() + " has joined the space.";
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put(USER_NAME_PARAM, "@" + event.getTarget());
-    templateParams.put(BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, USER_NAME_PARAM);
     recordActivity(event, createActivity(event, activityMessage, "user_joined", templateParams));
     LOG.debug("user " + event.getTarget() + " joined space " + event.getSpace().getDisplayName());
   }
@@ -185,7 +182,6 @@ public class SpaceActivityPublisher extends SpaceListenerPlugin {
     final String activityMessage = "@" + event.getTarget() + " has left the space.";
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put(USER_NAME_PARAM, "@" + event.getTarget());
-    templateParams.put(BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, USER_NAME_PARAM);
     recordActivity(event, createActivity(event, activityMessage, "member_left", templateParams));
     LOG.debug("user " + event.getTarget() + " has left of space " + event.getSpace().getDisplayName());
   }
@@ -228,6 +224,7 @@ public class SpaceActivityPublisher extends SpaceListenerPlugin {
   private void recordActivity(SpaceLifeCycleEvent event, ExoSocialActivity activity) {
     Space space = event.getSpace();
     Identity spaceIdentity = identityManager.getOrCreateIdentity(SpaceIdentityProvider.NAME, space.getPrettyName(), false);
+    ActivityTemplateParamsUtil.setTemplateParamsToProcess(activity, USER_NAME_PARAM);
     activityManager.saveActivityNoReturn(spaceIdentity, activity);
   }
 

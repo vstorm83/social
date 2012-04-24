@@ -97,13 +97,13 @@ public class OSHtmlSanitizerProcessorTest extends AbstractCoreTest {
     String sample = "this is a <strong> tag to keep</strong>";
     activity.setTitle(sample);
     activity.setBody(sample);
-    String keysToProcess = "a|b|c";
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put("a", "a\nb");
     templateParams.put("b", "exoplatform.com");
     templateParams.put("d", "exoplatform.com");
-    templateParams.put(BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, keysToProcess);
     activity.setTemplateParams(templateParams);
+    ActivityTemplateParamsUtil.setTemplateParamsToProcess(activity, "a","b","c","e");
+
     processor.processActivity(activity);
     
     templateParams = activity.getTemplateParams();
@@ -112,4 +112,23 @@ public class OSHtmlSanitizerProcessorTest extends AbstractCoreTest {
     assertEquals("exoplatform.com", templateParams.get("d"));
   }
   
+  public void testProcessActivityIsEncoded() throws Exception {
+    ExoSocialActivity activity = new ExoSocialActivityImpl();
+    String sample = "this is a <strong> tag to keep</strong>";
+    activity.setTitle(sample);
+    activity.setBody(sample);
+    Map<String, String> templateParams = new LinkedHashMap<String, String>();
+    templateParams.put("a", "a\nb");
+    templateParams.put("b", "exoplatform.com");
+    templateParams.put("d", "exoplatform.com");
+    activity.setTemplateParams(templateParams);
+    ActivityTemplateParamsUtil.setTemplateParamsToProcess(activity, "a","b","c","e");
+    ActivityTemplateParamsUtil.setActivityEncodeStatus(activity, true);
+    processor.processActivity(activity);
+
+    templateParams = activity.getTemplateParams();
+    assertEquals("a\nb", templateParams.get("a"));
+    assertEquals("exoplatform.com", templateParams.get("b"));
+    assertEquals("exoplatform.com", templateParams.get("d"));
+  }
 }

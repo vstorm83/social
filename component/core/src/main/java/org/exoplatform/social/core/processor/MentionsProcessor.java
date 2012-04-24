@@ -52,7 +52,7 @@ public class MentionsProcessor extends BaseActivityProcessorPlugin {
       activity.setBody(substituteUsernames(activity.getBody()));
       Map<String, String> templateParams = activity.getTemplateParams();
       
-      List<String> templateParamKeys = getTemplateParamKeysToFilter(activity);
+      String[] templateParamKeys = getTemplateParamKeysToFilter(activity);
       for(String key : templateParamKeys){
         templateParams.put(key, (String) substituteUsernames(templateParams.get(key)));
       }

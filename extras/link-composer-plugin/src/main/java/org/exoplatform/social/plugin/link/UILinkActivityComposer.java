@@ -28,6 +28,7 @@ import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvide
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
+import org.exoplatform.social.core.processor.ActivityTemplateParamsUtil;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.service.rest.LinkShare;
 import org.exoplatform.social.webui.composer.UIActivityComposer;
@@ -208,7 +209,6 @@ public class UILinkActivityComposer extends UIActivityComposer {
     UIApplication uiApplication = requestContext.getUIApplication();
     Map<String, String> templateParams = getTemplateParams();
     templateParams.put(COMMENT_PARAM, postedMessage);
-    templateParams.put(org.exoplatform.social.core.BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, COMMENT_PARAM ); 
     
     if(templateParams.get(IMAGE_PARAM) == null){
       templateParams.put(IMAGE_PARAM, "");
@@ -229,7 +229,8 @@ public class UILinkActivityComposer extends UIActivityComposer {
                                                            title,
                                                            null);
     activity.setTemplateParams(templateParams);
-    
+    ActivityTemplateParamsUtil.setTemplateParamsToProcess(activity, COMMENT_PARAM, TITLE_PARAM, DESCRIPTION_PARAM);
+
     if (postContext == UIComposer.PostContext.SPACE) {
       UISpaceActivitiesDisplay uiDisplaySpaceActivities = (UISpaceActivitiesDisplay) getActivityDisplay();
       Space space = uiDisplaySpaceActivities.getSpace();

@@ -87,13 +87,13 @@ public class MentionsProcessorTest extends AbstractCoreTest {
     String sample = "this is a <strong> tag to keep</strong>";
     activity.setTitle(sample);
     activity.setBody(sample);
-    String keysToProcess = "a|b|c";
     Map<String, String> templateParams = new LinkedHashMap<String, String>();
     templateParams.put("a", "@root and @john");
     templateParams.put("b", "@john");
     templateParams.put("d", "@mary");
-    templateParams.put(BaseActivityProcessorPlugin.TEMPLATE_PARAM_TO_PROCESS, keysToProcess);
     activity.setTemplateParams(templateParams);
+    ActivityTemplateParamsUtil.setTemplateParamsToProcess(activity, "a","b","c");
+
     processor.processActivity(activity);
     
     templateParams = activity.getTemplateParams();

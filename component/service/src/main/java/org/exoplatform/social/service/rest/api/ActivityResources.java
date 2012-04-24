@@ -20,6 +20,7 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -43,6 +44,7 @@ import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
+import org.exoplatform.social.core.processor.ActivityTemplateParamsUtil;
 import org.exoplatform.social.core.storage.ActivityStorageException;
 import org.exoplatform.social.service.rest.RestChecker;
 import org.exoplatform.social.service.rest.SecurityManager;
@@ -261,7 +263,10 @@ public class ActivityResources implements ResourceContainer {
     activity.setType(newActivity.getType());
     activity.setPriority(newActivity.getPriority());
     activity.setTitleId(newActivity.getTitleId());
-    activity.setTemplateParams(newActivity.getTemplateParams());
+    Map<String, String> templateParams = newActivity.getTemplateParams();
+
+    activity.setTemplateParams(templateParams);
+    ActivityTemplateParamsUtil.setActivityEncodeStatus(activity, false);
     
     activity.setUserId(authenticatedUserIdentity.getId());
     activityManager.saveActivityNoReturn(postToIdentity, activity);

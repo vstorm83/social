@@ -16,7 +16,6 @@
  */
 package org.exoplatform.social.core.processor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -37,15 +36,18 @@ public class OSHtmlSanitizerProcessor extends BaseActivityProcessorPlugin {
     if (xmlProcessor == null) {
       xmlProcessor = (XMLProcessor) PortalContainer.getInstance().getComponentInstanceOfType(XMLProcessor.class);
     }
-    activity.setTitle((String) xmlProcessor.process(activity.getTitle()));
-    activity.setBody((String) xmlProcessor.process(activity.getBody()));
     
-    Map<String, String> templateParams = activity.getTemplateParams();
-    
-    List<String> templateParamKeys = getTemplateParamKeysToFilter(activity);
-    for(String key : templateParamKeys){
-      templateParams.put(key, (String) xmlProcessor.process(templateParams.get(key)));
+    if(!ActivityTemplateParamsUtil.isActivityEncoded(activity)) {
+
+      activity.setTitle((String) xmlProcessor.process(activity.getTitle()));
+      activity.setBody((String) xmlProcessor.process(activity.getBody()));
+
+      Map<String, String> templateParams = activity.getTemplateParams();
+
+      String[] templateParamKeys = ActivityTemplateParamsUtil.getKeysForProcessing(activity);
+      for(String key : templateParamKeys) {
+        templateParams.put(key, (String) xmlProcessor.process(templateParams.get(key)));
+      }
     }
   }
-
 }
