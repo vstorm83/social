@@ -47,10 +47,12 @@ import org.exoplatform.webui.core.lifecycle.UIApplicationLifecycle;
 public class UIUserActivityStreamPortlet extends UIPortletApplication {
   private String ownerName;
   private String viewerName;
+  private String activityId;
   private UIComposer uiComposer;
   private PopupContainer hiddenContainer;
   private boolean composerDisplayed = false;
   UIUserActivitiesDisplay uiUserActivitiesDisplay;
+  
   /**
    * constructor
    *
@@ -59,16 +61,31 @@ public class UIUserActivityStreamPortlet extends UIPortletApplication {
   public UIUserActivityStreamPortlet() throws Exception {
     viewerName = Utils.getViewerRemoteId();
     ownerName = Utils.getOwnerRemoteId();
+    //activityId = Utils.getSelectedNode();//activity/2121dsds
+
     hiddenContainer = addChild(PopupContainer.class, null, "HiddenContainer");
     uiComposer = addChild(UIComposer.class, null, null);
-    uiComposer.setPostContext(PostContext.USER);
     uiComposer.setOptionContainer(hiddenContainer);
+    activityId = Utils.getActivityID();
+    if (activityId != null) {
+      uiComposer.setPostContext(PostContext.SINGLE);
+      uiComposer.setRendered(false);
+      composerDisplayed = false;
+    } else {
+      uiComposer.setPostContext(PostContext.USER);
+      composerDisplayed = true;
+    }   
     uiUserActivitiesDisplay = addChild(UIUserActivitiesDisplay.class, null, "UIUserActivitiesDisplay");
     uiComposer.setActivityDisplay(uiUserActivitiesDisplay);
   }
 
   public boolean isComposerDisplayed() {
     return composerDisplayed;
+  }
+  
+  public String getActivityId() {
+    activityId = Utils.getActivityID();
+    return activityId;
   }
 
   /**

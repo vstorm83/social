@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 import org.exoplatform.container.PortalContainer;
+import org.exoplatform.social.webui.Utils;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.application.portlet.PortletRequestContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
@@ -50,7 +51,8 @@ public class UIComposer extends UIForm {
 
   public enum PostContext {
     SPACE,
-    USER
+    USER,
+    SINGLE
   }
 
   private UIContainer optionContainer;
@@ -69,7 +71,7 @@ public class UIComposer extends UIForm {
   public UIComposer() throws Exception {
     WebuiRequestContext requestContext = WebuiRequestContext.getCurrentInstance();
     ResourceBundle resourceBundle = requestContext.getApplicationResourceBundle();
-    
+
     //add textbox for inputting message
     messageInput = new UIFormTextAreaInput("composerInput", "composerInput", null);
     messageInput.setHTMLAttribute(HTML_ATTRIBUTE_TITLE, resourceBundle.getString("UIComposer.input.Write_Something"));

@@ -25,6 +25,8 @@ import org.exoplatform.portal.mop.user.UserNode;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.portal.webui.workspace.UIWorkingWorkspace;
+import org.exoplatform.social.common.router.ExoRouter;
+import org.exoplatform.social.common.router.ExoRouter.Route;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -213,6 +215,15 @@ public class Utils {
   }
   
   /**
+   * Gets ExoRouter
+   * @return ExoRouter
+   * @since 1.2.0 GA
+   */
+  public static final ExoRouter getExoRouter() {
+    return (ExoRouter) ExoContainerContext.getCurrentContainer().getComponentInstanceOfType(ExoRouter.class);
+  }
+  
+  /**
    * Get the uri.
    * 
    * @param url
@@ -275,5 +286,18 @@ public class Utils {
     }
     
     return nodeURL.setResource(resource).toString(); 
+  }
+  /**
+   * Get paramValue bases on paramKey
+   * @param path
+   * @param key
+   * @return
+   */
+  public static String getActivityID() {
+    getExoRouter();
+    String uriActivity = getSelectedNode();
+    Route route = ExoRouter.route("/" + uriActivity);   
+    return route == null ? null : route.localArgs.get("activityID");
+    
   }
 }

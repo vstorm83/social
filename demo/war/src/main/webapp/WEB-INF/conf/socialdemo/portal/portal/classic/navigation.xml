@@ -55,6 +55,14 @@
     </node>
     
     <node>
+      <uri>activity</uri>
+      <name>activity</name>
+      <label>#{portal.classic.activity}</label>
+      <visibility>SYSTEM</visibility>
+      <page-reference>portal::classic::activity</page-reference>
+    </node>
+    
+    <node>
       <uri>connections</uri>
       <name>connections</name>
       <label>#{portal.classic.connections}</label>

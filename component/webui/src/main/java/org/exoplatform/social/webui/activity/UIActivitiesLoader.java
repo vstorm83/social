@@ -25,8 +25,11 @@ import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
+import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.space.model.Space;
+import org.exoplatform.social.webui.Utils;
 import org.exoplatform.social.webui.composer.UIComposer;
+import org.exoplatform.social.webui.composer.UIComposer.PostContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.EventConfig;
 import org.exoplatform.webui.core.UIContainer;
@@ -137,6 +140,13 @@ public class UIActivitiesLoader extends UIContainer {
       unableLoadNext = true;
       currentLoadIndex = 0;
       isExtendLoader = false;
+      
+      String activityId = Utils.getActivityID();
+      if (activityId != null && activityId.length() > 0) {
+        postContext = PostContext.SINGLE;
+      } else {
+        postContext = PostContext.USER;
+      }   
 
       activitiesContainer.setPostContext(postContext);
       activitiesContainer.setOwnerName(ownerName);
@@ -144,10 +154,18 @@ public class UIActivitiesLoader extends UIContainer {
         activitiesContainer.setSpace(space);
       }
 
-      List<ExoSocialActivity> activities = loadActivities(currentLoadIndex, loadingCapacity);
-      if (activityListAccess.getSize() > loadingCapacity) {
+      List<ExoSocialActivity> activities = null;
+      
+      if (this.postContext == PostContext.USER) {
+        activities = loadActivities(currentLoadIndex, loadingCapacity);
+        if (activityListAccess.getSize() > loadingCapacity) {
+          setUnableLoadNext(false);
+        }
+      } else {
+        activities = loadActivity();
         setUnableLoadNext(false);
       }
+      
       activitiesContainer.setActivityList(activities);
     } catch (Exception e) {
       LOG.error(e.getMessage(), e);
@@ -186,6 +204,15 @@ public class UIActivitiesLoader extends UIContainer {
     if (activities == null)
       return null;
     return new ArrayList<ExoSocialActivity>(Arrays.asList(activities));
+  }
+  
+  private List<ExoSocialActivity> loadActivity() throws Exception {
+    ActivityManager activityManager = Utils.getActivityManager();
+    String activityId = Utils.getActivityID();
+    ExoSocialActivity activity = activityManager.getActivity(activityId);
+    if (activity == null)
+      return null;
+    return new ArrayList<ExoSocialActivity>(Arrays.asList(activity));
   }
 
 
