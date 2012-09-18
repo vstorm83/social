@@ -1419,7 +1419,7 @@ public class SpaceServiceImpl implements SpaceService {
    */
   public void addApplicationFilter(FilterConfiguration filter) {
     if (this.filterConfiguration == null) {
-      filter = new FilterConfiguration();
+      filterConfiguration = new FilterConfiguration();
     }
     
     filter.importConfiguration(filter);
@@ -1431,10 +1431,9 @@ public class SpaceServiceImpl implements SpaceService {
   public ListAccess<Space> findSpaces(String currentUser, ApplicationFilter filter) throws SpaceException {
     if (filterConfiguration.hasConfigured(filter) == false) {
       //throw new SpaceException("ApplicationFilter is invalidated.");
-      
+      return null;
     }
     
-    
-    return null;
+    return new SpaceListAccess(spaceStorage, currentUser, filter, SpaceListAccess.Type.APPLICATION_FILTER);
   }
 }

@@ -516,7 +516,7 @@ public interface SpaceStorage {
    * @param offset
    * @param limit
    * @return
-   * @since 
+   * @since 4.0
    */
   public List<Space> findSpaces(String userId, ApplicationFilter appFilter, long offset, long limit) throws SpaceStorageException;
 
@@ -526,6 +526,7 @@ public interface SpaceStorage {
    * @param appFilter
    * @return
    * @throws SpaceStorageException
+   * @since 4.0
    */
   public int findSpacesCount(String userId, ApplicationFilter appFilter) throws SpaceStorageException;
 
