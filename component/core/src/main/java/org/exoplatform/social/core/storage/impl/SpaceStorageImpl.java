@@ -31,6 +31,7 @@ import org.chromattic.api.query.QueryBuilder;
 import org.chromattic.api.query.QueryResult;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.chromattic.entity.SpaceEntity;
 import org.exoplatform.social.core.chromattic.entity.SpaceListEntity;
@@ -1559,6 +1560,66 @@ public class SpaceStorageImpl extends AbstractStorage implements SpaceStorage {
     else {
       return null;
     }
+
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public List<Space> findSpaces(String userId, ApplicationFilter appFilter, long offset, long limit) throws SpaceStorageException {
+    List<Space> spaces = new ArrayList<Space>();
+
+    //
+    QueryResult<SpaceEntity> results = findSpacesByFilterQuery(userId, appFilter).objects(offset, limit);
+
+    while (results.hasNext()) {
+      SpaceEntity currentSpace = results.next();
+      Space space = new Space();
+      fillSpaceFromEntity(currentSpace, space);
+      spaces.add(space);
+    }
+
+    return spaces;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public int findSpacesCount(String userId, ApplicationFilter appFilter) throws SpaceStorageException {
+    
+    return findSpacesByFilterQuery(userId, appFilter).objects().size();
+  }
+  
+  private Query<SpaceEntity> findSpacesByFilterQuery(String userId, ApplicationFilter appFilter) {
+
+    QueryBuilder<SpaceEntity> builder = getSession().createQueryBuilder(SpaceEntity.class);
+    WhereExpression whereExpression = new WhereExpression();
+
+    if (appFilter.getPortletName() != null && appFilter.getPortletName().length() > 0) {
+      whereExpression.startGroup();
+      whereExpression
+          .like(SpaceEntity.app, processSearchCondition(appFilter.getPortletName()));
+          
+      whereExpression.endGroup();
+      
+      whereExpression.and();
+      whereExpression.startGroup();
+    }
+
+    whereExpression
+        .equals(SpaceEntity.membersId, userId)
+        .or()
+        .equals(SpaceEntity.managerMembersId, userId);
+
+    whereExpression.endAllGroup();
+
+    if (whereExpression.toString().length() > 0) {
+      builder.where(whereExpression.toString());
+    }
+
+    builder.orderBy(SpaceEntity.name.getName(), Ordering.ASC);
+
+    return builder.get();
 
   }
 

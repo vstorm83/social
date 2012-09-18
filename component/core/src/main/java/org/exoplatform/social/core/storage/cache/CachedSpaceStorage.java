@@ -22,6 +22,7 @@ import org.exoplatform.services.cache.ExoCache;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.space.SpaceFilter;
@@ -1139,5 +1140,46 @@ public class CachedSpaceStorage implements SpaceStorage {
     }
     
   }
+
+  @Override
+  public List<Space> findSpaces(final String userId, final ApplicationFilter appFilter, final long offset, final long limit) throws SpaceStorageException {
+    //
+    SpaceFilter spaceFilter = new SpaceFilter(appFilter);
+    SpaceFilterKey key = new SpaceFilterKey(userId, spaceFilter, SpaceType.APPLICATION);
+    ListSpacesKey listKey = new ListSpacesKey(key, offset, limit);
+
+    //
+    ListSpacesData keys = spacesCache.get(
+        new ServiceContext<ListSpacesData>() {
+          public ListSpacesData execute() {
+            List<Space> got = storage.findSpaces(userId, appFilter, offset, limit);
+            return buildIds(got);
+          }
+        },
+        listKey);
+
+    //
+    return buildSpaces(keys);
+  }
+
+  @Override
+  public int findSpacesCount(final String userId, final ApplicationFilter appFilter) throws SpaceStorageException {
+    //
+    SpaceFilter spaceFilter = new SpaceFilter(appFilter);
+    SpaceFilterKey key = new SpaceFilterKey(userId, spaceFilter, SpaceType.APPLICATION);
+
+    //
+    return spacesCountCache.get(
+        new ServiceContext<IntegerData>() {
+          public IntegerData execute() {
+            return new IntegerData(storage.findSpacesCount(userId, appFilter));
+          }
+        },
+        key)
+        .build();
+
+  }
+  
+  
 }
 

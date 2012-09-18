@@ -39,6 +39,8 @@ import org.exoplatform.services.organization.GroupHandler;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
 import org.exoplatform.social.core.application.PortletPreferenceRequiredPlugin;
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
+import org.exoplatform.social.core.application.filter.FilterConfiguration;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -90,6 +92,8 @@ public class SpaceServiceImpl implements SpaceService {
   
   /** The limit for list access loading. */
   private static final int                   LIMIT = 200;
+  
+  private FilterConfiguration filterConfiguration = null;
   
   /**
    * SpaceServiceImpl constructor Initialize
@@ -1408,5 +1412,29 @@ public class SpaceServiceImpl implements SpaceService {
     }
     
     return appId;  
+  }
+
+  /**
+   * {@inheritDoc} 
+   */
+  public void addApplicationFilter(FilterConfiguration filter) {
+    if (this.filterConfiguration == null) {
+      filter = new FilterConfiguration();
+    }
+    
+    filter.importConfiguration(filter);
+  }
+
+  /**
+   * {@inheritDoc} 
+   */
+  public ListAccess<Space> findSpaces(String currentUser, ApplicationFilter filter) throws SpaceException {
+    if (filterConfiguration.hasConfigured(filter) == false) {
+      //throw new SpaceException("ApplicationFilter is invalidated.");
+      
+    }
+    
+    
+    return null;
   }
 }

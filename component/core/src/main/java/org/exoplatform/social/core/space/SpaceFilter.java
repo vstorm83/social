@@ -16,6 +16,8 @@
  */
 package org.exoplatform.social.core.space;
 
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
+
 /**
  * @author <a href="http://hoatle.net">hoatle (hoatlevan at gmail dot com)</a>
  * @since 1.2.0-GA
@@ -27,6 +29,9 @@ public class SpaceFilter {
   /** The space name search condition. */
   private String spaceNameSearchCondition;
   
+  /** The application name search condition. */
+  private String applicationName;
+  
   /** The default value for char type. */
   private static char CHAR_DEFAULT_VALUE = '\u0000';
   
@@ -36,6 +41,16 @@ public class SpaceFilter {
   public SpaceFilter() {
     this.firstCharacterOfSpaceName = CHAR_DEFAULT_VALUE;
     this.spaceNameSearchCondition = null;
+    this.applicationName = null;
+  }
+  
+  /**
+   * The constructor.
+   */
+  public SpaceFilter(ApplicationFilter filter) {
+    this.firstCharacterOfSpaceName = CHAR_DEFAULT_VALUE;
+    this.spaceNameSearchCondition = null;
+    this.applicationName = filter.getPortletName();
   }
   
   /**
@@ -46,6 +61,7 @@ public class SpaceFilter {
   public SpaceFilter(char firstCharacterOfSpaceName) {
     this.firstCharacterOfSpaceName = firstCharacterOfSpaceName;
     this.spaceNameSearchCondition = null;
+    this.applicationName = null;
   }
   
   /**
@@ -56,7 +72,9 @@ public class SpaceFilter {
   public SpaceFilter(String spaceNameSearchCondition) {
     this.firstCharacterOfSpaceName = CHAR_DEFAULT_VALUE;
     this.spaceNameSearchCondition = SpaceUtils.removeSpecialCharacterInSpaceFilter(spaceNameSearchCondition);
+    this.applicationName = null;
   }
+  
   
   /**
    * The constructor.
@@ -67,6 +85,7 @@ public class SpaceFilter {
   public SpaceFilter(char firstCharacterOfSpaceName, String spaceNameSearchCondition) {
     this.firstCharacterOfSpaceName = firstCharacterOfSpaceName;
     this.spaceNameSearchCondition = SpaceUtils.removeSpecialCharacterInSpaceFilter(spaceNameSearchCondition);
+    this.applicationName = null;
   }
   
   /**
@@ -104,4 +123,22 @@ public class SpaceFilter {
   public void setSpaceNameSearchCondition(String spaceNameSearchCondition) {
     this.spaceNameSearchCondition = SpaceUtils.removeSpecialCharacterInSpaceFilter(spaceNameSearchCondition);
   }
+
+  /**
+   * Gets Application Name search condition
+   * @return
+   */
+  public String getApplicationName() {
+    return applicationName;
+  }
+
+  /**
+   * Sets Application Name search condition
+   * @param applicationName
+   */
+  public void setApplicationName(String applicationName) {
+    this.applicationName = applicationName;
+  }
+  
+  
 }

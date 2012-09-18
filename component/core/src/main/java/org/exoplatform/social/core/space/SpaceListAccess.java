@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.social.common.ListAccessValidator;
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.api.SpaceStorage;
 
@@ -41,6 +42,9 @@ public class SpaceListAccess implements ListAccess<Space> {
   
   /** The space filter */
   private SpaceFilter spaceFilter;
+  
+  /** The space filter */
+  private ApplicationFilter appFilter;
   
   /** The type. */
   Type type;
@@ -80,7 +84,9 @@ public class SpaceListAccess implements ListAccess<Space> {
     /** Gets the spaces which the user has the "member" role by filter. */
     MEMBER_FILTER,
     /** Gets the spaces which are visible and not include these spaces hidden */
-    VISIBLE
+    VISIBLE,
+    /** Gets the spaces of Application Name */
+    APPLICATION_FILTER
   }
   
   /**
@@ -151,6 +157,21 @@ public class SpaceListAccess implements ListAccess<Space> {
   }
   
   /**
+   * The constructor.
+   * 
+   * @param spaceStorage
+   * @param spaceFilter
+   * @param type
+   * @since 4.0
+   */
+  public SpaceListAccess(SpaceStorage spaceStorage, String userId, ApplicationFilter appFilter, Type type) {
+    this.spaceStorage = spaceStorage;
+    this.userId = userId;
+    this.appFilter = appFilter;
+    this.type = type;
+  }
+  
+  /**
    * {@inheritDoc}
    */
   public int getSize() throws Exception {
@@ -171,6 +192,7 @@ public class SpaceListAccess implements ListAccess<Space> {
       case MEMBER: return spaceStorage.getMemberSpacesCount(this.userId);
       case MEMBER_FILTER: return spaceStorage.getMemberSpacesByFilterCount(this.userId, this.spaceFilter);
       case VISIBLE: return spaceStorage.getVisibleSpacesCount(this.userId, this.spaceFilter);
+      case APPLICATION_FILTER: return spaceStorage.findSpacesCount(this.userId, this.appFilter);
       default: return 0;
     }
   }
@@ -214,6 +236,8 @@ public class SpaceListAccess implements ListAccess<Space> {
         break;
       case VISIBLE: listSpaces = spaceStorage.getVisibleSpaces(this.userId, this.spaceFilter, offset, limit);
         break;
+      case APPLICATION_FILTER: listSpaces = spaceStorage.findSpaces(this.userId, this.appFilter, offset, limit);
+      break;
     }
     return listSpaces.toArray(new Space[listSpaces.size()]);
   }

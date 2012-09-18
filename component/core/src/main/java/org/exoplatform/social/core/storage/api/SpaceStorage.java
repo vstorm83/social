@@ -19,6 +19,7 @@ package org.exoplatform.social.core.storage.api;
 
 import java.util.List;
 
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
 import org.exoplatform.social.core.space.SpaceFilter;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.SpaceStorageException;
@@ -507,4 +508,26 @@ public interface SpaceStorage {
    * @throws SpaceStorageException
    */
   public Space getSpaceByUrl(String url) throws SpaceStorageException;
+
+  /**
+   * Gets Space by ApplicationFilter of userId
+   * @param userId
+   * @param appFilter
+   * @param offset
+   * @param limit
+   * @return
+   * @since 
+   */
+  public List<Space> findSpaces(String userId, ApplicationFilter appFilter, long offset, long limit) throws SpaceStorageException;
+
+  /**
+   * Gets count of Space by ApplicationFilter
+   * @param userId
+   * @param appFilter
+   * @return
+   * @throws SpaceStorageException
+   */
+  public int findSpacesCount(String userId, ApplicationFilter appFilter) throws SpaceStorageException;
+
+  
 }

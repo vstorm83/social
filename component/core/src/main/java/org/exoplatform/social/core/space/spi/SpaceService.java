@@ -20,6 +20,8 @@ import java.util.List;
 
 import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.social.core.application.PortletPreferenceRequiredPlugin;
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
+import org.exoplatform.social.core.application.filter.FilterConfiguration;
 import org.exoplatform.social.core.space.SpaceApplicationConfigPlugin;
 import org.exoplatform.social.core.space.SpaceException;
 import org.exoplatform.social.core.space.SpaceFilter;
@@ -1210,5 +1212,22 @@ public interface SpaceService {
    * @deprecated Will be removed by 1.3.x
    */
   String [] getPortletsPrefsRequired();
+  /**
+   * Adds application Filer for query application.
+   * @param filter
+   * @since 4.0
+   */
+  void addApplicationFilter(FilterConfiguration filter);
+  
+  /**
+   * Finds all of spaces by given criteria.
+   * 
+   * @param currentUser The requesting user.
+   * @param filter The configured filter.
+   * @return
+   * @throws SpaceException
+   * @since 4.0
+   */
+  ListAccess<Space> findSpaces(String currentUser, ApplicationFilter filter) throws SpaceException;
 
 }

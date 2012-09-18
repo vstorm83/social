@@ -284,6 +284,21 @@
           </values-param>
         </init-params>
       </component-plugin>
+      
+      <component-plugin>
+       <name>Application Filter Configuration</name>
+       <set-method>addApplicationFilter</set-method>
+       <type>org.exoplatform.social.core.application.filter.FilterConfiguration</type>
+       <init-params>
+         <object-param>
+           <name>Wiki</name>
+           <description>Wiki application Filter</description>
+           <object type="org.exoplatform.social.core.application.filter.ApplicationFilter">
+             <field name="portletName"><string>WikiPortlet</string></field>
+           </object>
+         </object-param>
+       </init-params>
+     </component-plugin>
     </component-plugins>
   </component>
 

@@ -19,6 +19,7 @@ package org.exoplatform.social.core.storage.synchronization;
 
 import java.util.List;
 
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
 import org.exoplatform.social.core.space.SpaceFilter;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.impl.IdentityStorageImpl;
@@ -767,6 +768,39 @@ public class SynchronizedSpaceStorage extends SpaceStorageImpl {
     boolean created = startSynchronization();
     try {
       return super.getSpaceByUrl(url);
+    }
+    finally {
+      stopSynchronization(created);
+    }
+
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public List<Space> findSpaces(final String userId, final ApplicationFilter appFilter, final long offset, final long limit)
+                                     throws SpaceStorageException {
+
+    boolean created = startSynchronization();
+    try {
+      return super.findSpaces(userId, appFilter, offset, limit);
+    }
+    finally {
+      stopSynchronization(created);
+    }
+
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public int findSpacesCount(final String userId, final ApplicationFilter appFilter) throws SpaceStorageException {
+
+    boolean created = startSynchronization();
+    try {
+      return super.findSpacesCount(userId, appFilter);
     }
     finally {
       stopSynchronization(created);
