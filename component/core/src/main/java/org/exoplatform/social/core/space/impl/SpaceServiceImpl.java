@@ -1422,7 +1422,7 @@ public class SpaceServiceImpl implements SpaceService {
       filterConfiguration = new FilterConfiguration();
     }
     
-    filter.importConfiguration(filter);
+    filterConfiguration.importConfiguration(filter);
   }
 
   /**

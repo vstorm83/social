@@ -60,7 +60,7 @@ public class FilterConfiguration extends BaseComponentPlugin {
   }
   
   public FilterConfiguration() {
-    
+    appFilters = new ArrayList<ApplicationFilter>();
   }
   /**
    * 

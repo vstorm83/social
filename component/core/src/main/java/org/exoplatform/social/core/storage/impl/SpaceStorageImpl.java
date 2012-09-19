@@ -1598,7 +1598,7 @@ public class SpaceStorageImpl extends AbstractStorage implements SpaceStorage {
     if (appFilter.getPortletName() != null && appFilter.getPortletName().length() > 0) {
       whereExpression.startGroup();
       whereExpression
-          .like(SpaceEntity.app, processSearchCondition(appFilter.getPortletName()));
+          .like(SpaceEntity.app, processSearchCondition(StorageUtils.ASTERISK_STR + appFilter.getPortletName() + StorageUtils.ASTERISK_STR));
           
       whereExpression.endGroup();
       

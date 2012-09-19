@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.exoplatform.social.core.application.filter.ApplicationFilter;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
@@ -133,8 +134,19 @@ public class SpaceStorageTest extends AbstractCoreTest {
    * @return an instance of space
    */
   private Space getSpaceInstance(int number) {
+    return getSpaceInstance(number, "app");
+  }
+  
+  /**
+   * Gets an instance of Space.
+   *
+   * @param number
+   * @param appName
+   * @return an instance of space
+   */
+  private Space getSpaceInstance(int number, String appName) {
     Space space = new Space();
-    space.setApp("app");
+    space.setApp(appName);
     space.setDisplayName("my space " + number);
     space.setPrettyName(space.getDisplayName());
     space.setRegistration(Space.OPEN);
@@ -2103,6 +2115,44 @@ public class SpaceStorageTest extends AbstractCoreTest {
       assertNotNull("invitedSpaces must not be  null", invitedSpaces2);
       assertEquals("invitedSpaces must return: " + invitedSpaceCount2, invitedSpaceCount2, invitedSpaces2.size());
     }
+  }
+  
+  /**
+   * Test {@link org.exoplatform.social.core.storage.SpaceStorage#findSpaces(String, ApplicationFilter, long, long)}
+   *
+   * @throws Exception
+   * @since 4.0.0
+   */
+  @MaxQueryNumber(700)
+  public void testFindSpaces() throws Exception {
+    int totalSpaces = 10;
+    for (int i = 1; i <= totalSpaces; i++) {
+      Space space = this.getSpaceInstance(i, "WikiPortlet");
+      spaceStorage.saveSpace(space, true);
+      tearDownSpaceList.add(space);
+    }
+    List<Space> spaces = spaceStorage.findSpaces("demo", new ApplicationFilter("WikiPortlet"), 0, 3);
+    assertEquals(3, spaces.size());
+    assertEquals("my space 1", spaces.get(0).getDisplayName());
+    assertEquals("my space 10", spaces.get(1).getDisplayName());
+    assertEquals("my space 2", spaces.get(2).getDisplayName());
+  }
+  
+  /**
+   * Test {@link org.exoplatform.social.core.storage.SpaceStorage#findSpacesCount()}
+   *
+   * @throws Exception
+   * @since 4.0.0
+   */
+  @MaxQueryNumber(700)
+  public void testFindSpacesCount() throws Exception {
+    int totalSpaces = 10;
+    for (int i = 1; i <= totalSpaces; i++) {
+      Space space = this.getSpaceInstance(i, "WikiPortlet");
+      spaceStorage.saveSpace(space, true);
+      tearDownSpaceList.add(space);
+    }
+    assertEquals(10, spaceStorage.findSpacesCount("demo", new ApplicationFilter("WikiPortlet")));
   }
   
   // TODO : test getSpaceByGroupId without result
