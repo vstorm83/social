@@ -22,7 +22,20 @@
  * @since	Oct 20, 2009
  * @copyright	eXo Platform SEA
  */
- 
+
+;(function($, document, window){
+   var portal = window.eXo.env.portal
+
+   window.eXo.social = window.eXo.social || {};
+   window.eXo.social.portal = {
+     rest : (portal.rest) ? portal.rest : 'rest-socialdemo',
+     portalName : (portal.portalName) ? portal.portalName : 'classic',
+     context : (portal.context) ? portal.context : '/socialdemo',
+     accessMode: (portal.accessMode) ? portal.accessMode : 'public',
+     userName : (portal.userName) ? portal.userName : ''
+   };
+})(jQuery, document, window);
+
 /*
 *Social jQuery plugin
 */ 

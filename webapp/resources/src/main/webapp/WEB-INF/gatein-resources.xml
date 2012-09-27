@@ -150,6 +150,9 @@
       <module>webui</module>
     </depends>
     <depends>
+      <module>socialPlugin</module>
+    </depends>
+    <depends>
       <module>jquery</module>
       <as>$</as>
     </depends>
@@ -211,6 +214,10 @@
     <script>
       <name>social-plugin</name>
       <path>/javascript/eXo/social/Util.js</path>
+    </script>
+    <script>
+      <name>user-info-plugin</name>
+      <path>/javascript/eXo/social/plugin/UserMenuPlugin.js</path>
     </script>
     <depends>
       <module>jquery</module>

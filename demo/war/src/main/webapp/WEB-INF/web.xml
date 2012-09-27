@@ -243,9 +243,9 @@
   
   <servlet-mapping>
     <servlet-name>RestServer</servlet-name>
-    <url-pattern>/rest/*</url-pattern>
+    <url-pattern>/rest-socialdemo/*</url-pattern>
   </servlet-mapping>
-  
+
   <servlet-mapping>
     <servlet-name>Controller</servlet-name>
     <url-pattern>/connector</url-pattern>
@@ -254,11 +254,6 @@
   <servlet-mapping>
     <servlet-name>GateInServlet</servlet-name>
     <url-pattern>/gateinservlet</url-pattern>
-  </servlet-mapping>
-  
-  <servlet-mapping>
-    <servlet-name>portal</servlet-name>
-    <url-pattern>/</url-pattern>
   </servlet-mapping>
   
   <servlet-mapping>

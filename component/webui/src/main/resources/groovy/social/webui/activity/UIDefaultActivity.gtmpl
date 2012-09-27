@@ -87,8 +87,9 @@
     commentFormFocused: '${uicomponent.isCommentFormFocused()}'
 	} """
   
-  jsManager.require("SHARED/social-ui-activity", "activity").addScripts("activity.UIActivity.onLoad($params);");
-  
+  jsManager.require("SHARED/social-ui-activity", "activity")
+				   .addScripts("activity.UIActivity.onLoad($params);");
+	
   //make sures commentFormFocused is set to false to prevent any refresh to focus, only focus after post a comment
   uicomponent.setCommentFormFocused(false);
   def ownerName, ownerUri = "#", ownerAvatar, activityPostedTime, activityPostedTimeInSpace;
@@ -152,7 +153,7 @@
     <div class="ContentBox" id="ContextBox${activity.id}">
       <div id="ActivityContextBox${activity.id}">
       <h5 class="TitleContent ClearFix">
-        <a class="Text" title="$ownerName" href="$ownerUri">$ownerName</a>
+        <a class="Text UserInfo" title="$ownerName" rel="${ownerIdentity.getRemoteId()}" href="$ownerUri">$ownerName</a>
       <% if (activityDeletable) {%>
         <span onclick="<%= uicomponent.event("DeleteActivity", uicomponent.getId(), ""); %>" class="CloseContentBoxNormal" id="DeleteActivityButton${activity.id}"></span>
       <%}%>
@@ -207,7 +208,7 @@
               personLikeAvatarImageSource = id.profile.avatarUrl;
               if (!personLikeAvatarImageSource) personLikeAvatarImageSource = LinkProvider.PROFILE_DEFAULT_AVATAR_URL;
               %>
-                <a class="AvatarPeopleBG" title="$personLikeFullName" href="$personLikeProfileUri">
+                <a class="AvatarPeopleBG UserInfo" title="$personLikeFullName" rel="${id.getRemoteId()}" href="$personLikeProfileUri">
                   <img src="$personLikeAvatarImageSource" alt="$personLikeFullName" title="$personLikeFullName" />
                 </a>
              <% })%>
@@ -272,7 +273,7 @@
           <span class="BorderBottomCM"></span>
         </a>
         <div class="ContentBox">
-            <h5><a href="$commenterProfileUri">$commenterFullName</a></h5>
+            <h5><a href="$commenterProfileUri" class="UserInfo" rel="${id.getRemoteId()}">$commenterFullName</a></h5>
             <p class="ContentBlock">
             	$commentMessage
             </p>

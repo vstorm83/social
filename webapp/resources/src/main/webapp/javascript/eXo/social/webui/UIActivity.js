@@ -179,6 +179,11 @@ var UIActivity = {
         })(i);
       }
     }
+    var portlet = $('#UISpaceActivityStreamPortlet');
+    if(portlet.length ==0){
+      portlet = $('#UIUserActivityStreamPortlet');
+    }
+    portlet.find('a:[href*="/profile/"]').showUserInfo();
   }
 }
 

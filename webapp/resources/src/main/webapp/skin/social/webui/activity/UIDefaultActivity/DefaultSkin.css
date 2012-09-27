@@ -197,6 +197,10 @@
 	margin-right: 10px;
 }
 
+.UIActivity .TitleContent {
+	height: 14px;
+}
+
 .UIActivity .CommentBox .ContentBox .ContentBlock {
 	margin-top: 2px;
 }
@@ -221,7 +225,7 @@
 
 .UIActivity .ContentBox h5 {
 	color: #f68a2f;
-	overflow: hidden;
+	overflow: visible;
 	margin: 0;
 }
 
