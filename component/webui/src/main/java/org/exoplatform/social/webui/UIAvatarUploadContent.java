@@ -16,12 +16,20 @@
  */
 package org.exoplatform.social.webui;
 
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Map;
 
+import javax.imageio.ImageIO;
+
+import org.exoplatform.commons.utils.MimeTypeResolver;
 import org.exoplatform.download.DownloadService;
 import org.exoplatform.download.InputStreamDownloadResource;
-import org.exoplatform.portal.webui.container.UIContainer;
 import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.image.ImageUtils;
 import org.exoplatform.social.core.model.AvatarAttachment;
@@ -32,8 +40,12 @@ import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.EventConfig;
 import org.exoplatform.webui.core.UIComponent;
 import org.exoplatform.webui.core.UIPopupWindow;
+import org.exoplatform.webui.core.lifecycle.UIFormLifecycle;
 import org.exoplatform.webui.event.Event;
 import org.exoplatform.webui.event.EventListener;
+import org.exoplatform.webui.event.Event.Phase;
+import org.exoplatform.webui.form.UIForm;
+import org.exoplatform.webui.form.UIFormStringInput;
 
 /**
  * Displays uploaded content from UIAvatarUploader.<br>
@@ -43,26 +55,44 @@ import org.exoplatform.webui.event.EventListener;
  * Nov 4, 2009
  */
 @ComponentConfig(
+  lifecycle = UIFormLifecycle.class,
   template = "classpath:groovy/social/webui/UIAvatarUploadContent.gtmpl",
   events = {
-    @EventConfig(listeners = UIAvatarUploadContent.SaveActionListener.class),
+    @EventConfig(listeners = UIAvatarUploadContent.CropActionListener.class),
+    @EventConfig(listeners = UIAvatarUploadContent.SaveActionListener.class, phase = Phase.PROCESS),
     @EventConfig(listeners = UIAvatarUploadContent.CancelActionListener.class)
   }
 )
-public class UIAvatarUploadContent extends UIContainer {
+public class UIAvatarUploadContent extends UIForm {
 
+  private static final String CROPPED_INFO = "croppedInfo";
+  private static final String X = "X";
+  private static final String Y = "Y";
+  private static final String WIDTH = "WIDTH";
+  private static final String HEIGHT = "HEIGHT";
+  
   /** AvatarAttachment instance. */
   private AvatarAttachment avatarAttachment;
 
   /** Stores information of image storage. */
   private String imageSource;
 
+  /** */
+  private InputStream originImg;
+  
+  /** */
+  private byte[] resizedImgInBytes;
+  
+  private Map<String, String> croppedInfo;
+  
   /**
    * Default constructor.<br>
    *
    */
   public UIAvatarUploadContent() {
-
+    UIFormStringInput input = new UIFormStringInput(CROPPED_INFO, CROPPED_INFO, "0");
+    input.setId(CROPPED_INFO);
+    addUIFormInput(input);
   }
 
   /**
@@ -110,6 +140,118 @@ public class UIAvatarUploadContent extends UIContainer {
   }
 
   /**
+   * 
+   * @return
+   */
+  public InputStream getOriginImg() {
+    return originImg;
+  }
+
+  /**
+   * 
+   * @param originImg
+   */
+  public void setOriginImg(InputStream originImg) {
+    this.originImg = originImg;
+  }
+
+
+  /*
+   * 
+   */
+  public Map<String, String> getCroppedInfo() {
+    return croppedInfo;
+  }
+
+  /**
+   * 
+   * @param croppedInfo
+   */
+  public void setCroppedInfo(Map<String, String> croppedInfo) {
+    this.croppedInfo = croppedInfo;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public byte[] getResizedImgInBytes() {
+    return resizedImgInBytes;
+  }
+
+  /**
+   * 
+   * @param resizedImgInBytes
+   */
+  public void setResizedImgInBytes(byte[] resizedImgInBytes) {
+    this.resizedImgInBytes = resizedImgInBytes;
+  }
+
+  /**
+   * Crop image, make preview image.
+   *
+   */
+  public static class CropActionListener extends EventListener<UIAvatarUploadContent> {
+    @Override
+    public void execute(Event<UIAvatarUploadContent> event) throws Exception {
+      UIAvatarUploadContent uiAvatarUploadContent = event.getSource();
+      AvatarAttachment att = uiAvatarUploadContent.avatarAttachment;
+      
+      String croppedInfoVal =  ((UIFormStringInput)uiAvatarUploadContent.getChildById(CROPPED_INFO)).getValue();
+      Map<String, String> croppedInfos = getCroppedInfoValues(croppedInfoVal);
+
+      // set cropping information
+      uiAvatarUploadContent.setCroppedInfo(croppedInfos);
+
+      // get cropped information
+      int x = Integer.parseInt(croppedInfos.get(X));
+      int y = Integer.parseInt(croppedInfos.get(Y));
+      int w = Integer.parseInt(croppedInfos.get(WIDTH));
+      int h = Integer.parseInt(croppedInfos.get(HEIGHT));
+
+      InputStream in = new ByteArrayInputStream(att.getImageBytes());
+      
+      //
+      uiAvatarUploadContent.setResizedImgInBytes(att.getImageBytes());
+      
+      BufferedImage image = ImageIO.read(in);
+      
+      //
+      image = image.getSubimage(x, y, w, h);
+      
+      // create and re-store attachment info
+      MimeTypeResolver mimeTypeResolver = new MimeTypeResolver();
+      String extension = mimeTypeResolver.getExtension(att.getMimeType());
+      
+      ByteArrayOutputStream os = new ByteArrayOutputStream();
+      ImageIO.write(image, extension, os);
+      os.flush();
+      byte[] imageInByte = os.toByteArray();
+      os.close();
+      att.setImageBytes(imageInByte);
+      InputStream input = new ByteArrayInputStream(imageInByte);
+
+      att.setInputStream(input);
+      
+      uiAvatarUploadContent.setAvatarAttachment(att);
+      
+      event.getRequestContext().addUIComponentToUpdateByAjax(uiAvatarUploadContent);
+    }
+
+    private Map<String, String> getCroppedInfoValues(String input) {
+      Map<String, String> croppedInfo = new HashMap<String, String>();
+      String[] value = input.split(",");
+      
+      for (String val : value) {
+        String[] info = val.split(":");
+        croppedInfo.put(info[0], info[1]);
+      }
+      
+      return croppedInfo;
+    }
+  }
+  
+  /**
    * Accepts and saves the uploaded image to profile.
    * Closes the popup window, refreshes UIProfile.
    *
@@ -118,6 +260,10 @@ public class UIAvatarUploadContent extends UIContainer {
     @Override
     public void execute(Event<UIAvatarUploadContent> event) throws Exception {
       UIAvatarUploadContent uiAvatarUploadContent = event.getSource();
+      
+      // crop image
+      uiAvatarUploadContent.crop();
+      
       saveAvatar(uiAvatarUploadContent);
       UIPopupWindow uiPopup = uiAvatarUploadContent.getParent();
       uiPopup.setShow(false);
@@ -198,5 +344,55 @@ public class UIAvatarUploadContent extends UIContainer {
     InputStreamDownloadResource downloadResource = new InputStreamDownloadResource(byteImage, "image");
     downloadResource.setDownloadName(avatarAttachment.getFileName());
     imageSource = downloadService.getDownloadLink(downloadService.addDownloadResource(downloadResource));
+  }
+  
+  private void crop() throws Exception {
+    BufferedImage originImg = ImageIO.read(getOriginImg());
+    BufferedImage resizedImg = ImageIO.read(new ByteArrayInputStream(getResizedImgInBytes()));
+
+    // Original image information
+    int w_o = originImg.getWidth();
+    int h_o = originImg.getHeight();
+    
+    // Resized image information
+    int w_r = resizedImg.getWidth();
+    int h_r = resizedImg.getHeight();
+    
+    // cropped image information on resized image
+    int x_cr = Integer.parseInt(getCroppedInfo().get(X));
+    int y_cr = Integer.parseInt(getCroppedInfo().get(Y));
+    int width_cr = Integer.parseInt(getCroppedInfo().get(WIDTH));
+    int height_cr = Integer.parseInt(getCroppedInfo().get(HEIGHT));
+    
+    // calculate the scale
+    double scale_w = (double)w_o/(double)w_r;
+    double scale_h = (double)h_o/(double)h_r;
+    
+    double scale_OR = scale_w > scale_h ? scale_h : scale_w;
+    
+    // cropped image information on original image
+    int x_co = (int)(x_cr*scale_w);
+    int y_co = (int)(y_cr*scale_h);
+    int width_co = (int) (width_cr*scale_OR); 
+    int height_co = (int) (height_cr*scale_OR);
+    
+    // sub image with new information
+    BufferedImage croppedImg = originImg.getSubimage(x_co, y_co, width_co, height_co);
+    
+    AvatarAttachment att = getAvatarAttachment();
+    MimeTypeResolver mimeTypeResolver = new MimeTypeResolver();
+    String extension = mimeTypeResolver.getExtension(att.getMimeType());
+    
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    ImageIO.write(croppedImg, extension, os);
+    os.flush();
+    byte[] imageInByte = os.toByteArray();
+    os.close();
+    att.setImageBytes(imageInByte);
+    InputStream input = new ByteArrayInputStream(imageInByte);
+
+    att.setInputStream(input);
+    
+    setAvatarAttachment(att);
   }
 }

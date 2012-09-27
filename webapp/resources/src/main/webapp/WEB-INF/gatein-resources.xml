@@ -207,6 +207,21 @@
   </module>
   
   <module>
+    <name>social-image-cropper</name>
+    <script>
+       <name>eXo.social.webui.UIImageCropper</name>
+       <path>/javascript/eXo/social/webui/UIImageCropper.js</path>
+    </script>
+    <depends>
+      <module>jquery</module>
+      <as>$</as>
+    </depends>
+    <depends>
+       <module>socialPlugin</module>
+    </depends>
+  </module>
+  
+  <module>
     <name>socialPlugin</name>
     <script>
       <name>social-plugin</name>

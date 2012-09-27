@@ -250,6 +250,10 @@ public class AvatarAttachment {
     return imageBytes;
   }
 
+  public void setImageBytes(byte[] imageBytes) {
+    this.imageBytes = imageBytes;
+  }
+  
   /**
    * Sets the input stream.
    *

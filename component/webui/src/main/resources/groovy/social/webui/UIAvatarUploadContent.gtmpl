@@ -27,25 +27,45 @@
   def lalbelFileName = _ctx.appRes("${uicomponentId}.label.file_name")
   def labelFileType = _ctx.appRes("${uicomponentId}.label.file_type")
   def labelImageSize = _ctx.appRes("${uicomponentId}.label.image_size")
+  def cropLabel = _ctx.appRes("${uicomponentId}.label.Crop");
   def labelSave = _ctx.appRes("${uicomponentId}.label.save")
   def labelCancel = _ctx.appRes("${uicomponentId}.label.cancel")
   def avatarTitle = _ctx.appRes("${uicomponentId}.title.Avatar");
   
+  def cropAction = uicomponent.event("Crop")
   def saveAction = uicomponent.event("Save")
   def cancelAction = uicomponent.event("Cancel")
   def imageSource = uicomponent.imageSource;
+  
+  def params = """ {
+	  cropLabel: '${cropLabel}'
+	} """
+  
+  def jsmanager = _ctx.getRequestContext().getJavascriptManager();
+  jsmanager.require("SHARED/social-image-cropper", "imageCropper").addScripts("imageCropper.UIImageCropper.init($params);");
 %>
 
-<div id="$uicomponent.id" class="UIAvatarUploadContent">
+<div class="$uicomponent.id">
+  <% uiform.begin() %>
   <div class="AvatarInfo ClearFix">
-    <a class="ImageAvatar"><img src="$imageSource" title="$avatarTitle" alt="$avatarTitle" /></a>
-    <div><span>$lalbelFileName</span></span> <%= avatarAttachment.fileName %></div>
-    <div><span>$labelFileType</span> <%= avatarAttachment.mimeType %></div>
-    <div><span>$labelImageSize</span> <%= avatarAttachment.size %></div>
-    
-  </div>
-  <div class="UIAction">
-      <a onclick="$saveAction" href="javascript:void(0);" class="ActionButton LightBlueStyle">$labelSave</a>
-      <a onclick="$cancelAction" href="javascript:void(0);" class="ActionButton LightBlueStyle">$labelCancel</a>
+    <div id="wrapper" class="FL">
+      <div class="image-decorator">
+        <img id="profileAvatar" src="$imageSource" title="$avatarTitle" alt="$avatarTitle" />
+      </div>
+	  </div>
+	  <div class="FL">
+     <span>$lalbelFileName</span></span> <%= avatarAttachment.fileName %><br/>
+     <span>$labelFileType</span> <%= avatarAttachment.mimeType %><br/>
+     <span>$labelImageSize</span> <%= avatarAttachment.size %>
+     <% uiform.renderField("croppedInfo")%>
     </div>
+  </div>
+  
+  <div class="UIAction">
+    <a onclick="$cropAction" id="cropAction" data="crop" href="javascript:void(0);" class="ActionButton LightBlueStyle">$cropLabel</a>
+    <a onclick="$saveAction" href="javascript:void(0);" class="ActionButton LightBlueStyle">$labelSave</a>
+    <a onclick="$cancelAction" href="javascript:void(0);" class="ActionButton LightBlueStyle">$labelCancel</a>
+  </div>
+  
+  <% uiform.end(); %>
 </div>

@@ -142,6 +142,10 @@ public class UIAvatarUploader extends UIForm {
       UIAvatarUploader uiAvatarUploader = event.getSource();
       UIFormUploadInput uiAvatarUploadInput = uiAvatarUploader.getChild(UIFormUploadInput.class);
       UIPopupWindow uiPopup = uiAvatarUploader.getParent();
+      UIAvatarUploadContent uiAvatarUploadContent = uiAvatarUploader.createUIComponent(UIAvatarUploadContent.class,
+                                                                                       null,
+                                                                                       null);
+      
       InputStream uploadedStream = uiAvatarUploadInput.getUploadDataAsStream();
 
       if (uploadedStream == null) {
@@ -151,6 +155,9 @@ public class UIAvatarUploader extends UIForm {
         ctx.addUIComponentToUpdateByAjax(uiAvatarUploader);
         return;
       }
+      
+      uiAvatarUploadContent.setOriginImg(uiAvatarUploadInput.getUploadDataAsStream());
+      
       UploadResource uploadResource = uiAvatarUploadInput.getUploadResource();
 
       String mimeType = uploadResource.getMimeType();
@@ -192,9 +199,7 @@ public class UIAvatarUploader extends UIForm {
 
         UploadService uploadService = (UploadService) PortalContainer.getComponent(UploadService.class);
         uploadService.removeUploadResource(uploadId);
-        UIAvatarUploadContent uiAvatarUploadContent = uiAvatarUploader.createUIComponent(UIAvatarUploadContent.class,
-                                                                                         null,
-                                                                                         null);
+
         uiAvatarUploadContent.setAvatarAttachment(avatarAttachment);
         uiPopup.setUIComponent(uiAvatarUploadContent);
         ctx.addUIComponentToUpdateByAjax(uiPopup);
