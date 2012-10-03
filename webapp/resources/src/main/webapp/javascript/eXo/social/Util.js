@@ -23,18 +23,22 @@
  * @copyright	eXo Platform SEA
  */
 
-;(function($, document, window){
-   var portal = window.eXo.env.portal
-
+;(function(window){
+   var portal = window.eXo.env.portal,
+       DEFAULT_REST_CONTEXT_NAME = 'rest-socialdemo',
+       DEFAULT_PORTAL_NAME = 'classic',
+       DEFAULT_PORTAL_CONTEXT = "/socialdemo",
+       DEFAULT_ACCESSMODE = "public";
+       
    window.eXo.social = window.eXo.social || {};
    window.eXo.social.portal = {
-     rest : (portal.rest) ? portal.rest : 'rest-socialdemo',
-     portalName : (portal.portalName) ? portal.portalName : 'classic',
-     context : (portal.context) ? portal.context : '/socialdemo',
-     accessMode: (portal.accessMode) ? portal.accessMode : 'public',
+     rest : (portal.rest) ? portal.rest : DEFAULT_REST_CONTEXT_NAME,
+     portalName : (portal.portalName) ? portal.portalName : DEFAULT_PORTAL_NAME,
+     context : (portal.context) ? portal.context : DEFAULT_PORTAL_CONTEXT,
+     accessMode: (portal.accessMode) ? portal.accessMode : DEFAULT_ACCESSMODE,
      userName : (portal.userName) ? portal.userName : ''
    };
-})(jQuery, document, window);
+})(window);
 
 /*
 *Social jQuery plugin
@@ -329,116 +333,237 @@
 })(jQuery);
 
 
-// Tooltip plugin
-;(function($) {
-    $.fn.toolTip = function(url, settings) {
+// User Profile Popup plugin
+;(function($, document, window) {
+  var template = null;
+  var display = true;
 
-        var defaultSettings = {
-	        className   : 'UserName',
-	        color       : 'yellow',
-	        onHover     : undefined,
-	        timeout     : 300
-        };
+  $.fn.showUserInfo = function(settings) {
+  
+    var defaultSettings = {
+      styleSheetFilePath : "/social-resources/skin/social/webui/UIPopup/DefaultSkin.css",
+      hasReload : false
+    };
+    
+    settings = $.extend(defaultSettings, settings);
+    
+    $( function () {
+        $('<style type="text/css">@import url("' + settings.styleSheetFilePath + '")</style>')
+          .appendTo("head");
+    
+        buildTemplate();
+    } );
+  
+    return $(this).on('mouseover', function(event) {
+                  var userInfo = new UserInfo($(this));
+                  userInfo.hasReload = settings.hasReload;
+                  userInfo.init(event);
+                  event.stopPropagation();
+                }).on('mouseout', function(event) {
+                  display = false;
+                  window.setTimeout(function () {hideAllUserInfo(event);}, 500);
+                  event.stopPropagation();
+                });
+  };
+
+  // building template of popup
+  function buildTemplate() {
+    if( !template ) {
+      template = $('<div class="UIUserInfoPopupContent"></div>')
+        .append('<div class="Arrow"><span></span></div>')
+        .append(
+          $('<div class="ClearFix"></div>')
+            .append('<div class="Avatar"></div>')
+            .append(
+              $('<div class="RightInfo"></div>')
+                .append('<div class="FullName">FullName</div>')
+                .append('<div class="Status">Status</div>')
+                .append('<div><a class="More" href="javascript:void(0)">More<span class="LeftRowIcon"></span></a></div>')
+            )
+        )
+        .append('<div class="Invite ClearFix">Invite to connect</div>');
+    }
+    return template;
+  }
+  
+  // hide popup
+  function hideAllUserInfo(event) {
+    if(display === false) {
+      var uiPopup = $(document.body).find('div.UIUserInfoPopup');
+      uiPopup.find('div.UIUserInfoPopupContent').animate(
+        {
+          height:'10px',
+          width: '10px',
+          minWidth: '10px',
+          top : '-20px',
+          left : '-50px',
+          opacity: 0.5
+        }, 250, 'linear', function() {
+          $(this).css({'opacity': 1, minWidth: '200px'});
+          uiPopup.html('');
+        }
+      );
+    }
+  }
+
+  //
+  function UserInfo(jelm) {
+    var userInfo = {
+        jElmInfo: $(jelm),
+        container : $('<div class="UIUserInfoPopup"></div>'),
+        userId : "",
+        avatarURL : "",
+        profileURL : "",
+        status : "",
+        hasReload: false,
+        template : "",
+        json : {fullName:"", activityTitle: "", avatarURL: "", relationshipType:""},
+        restUrl : "",
+        displayInvite : true,
+        init : function(event) {
+          var portal = eXo.social.portal;
+          userInfo.restUrl = 'http://' + window.location.host + portal.context + '/' + portal.rest 
+                      + '/social/people' + '/getPeopleInfo/' + userInfo.getUserName() + '.json';
         
-        /* Combining the default settings object with the supplied one */
-        settings = $.extend(defaultSettings, settings);
-
-        return this.each(function() {
-
-            var elem = $(this);
-            
-            // Continue with the next element in case of not effected element
-            if(!elem.hasClass(settings.className)) return true;
-            
-            var scheduleEvent = new eventScheduler();
-            var tip = new Tip();
-
-            elem.append(tip.generate()).addClass('UIToolTipContainer');
-
-            elem.addClass(settings.color);
-            
-            elem.hover(function() {
-              reLoadPopup();
-	            tip.show();
-	            scheduleEvent.clear();
-            },function(){
-	            scheduleEvent.set(function(){
-	              tip.hide();
-	            }, settings.timeout);
-            });
-            
-            function reLoadPopup() {
-              var hrefValue = elem.attr('href');
-              var personId = hrefValue.substr(hrefValue.lastIndexOf("/") + 1);
-              
-              var restUrl = url.replace('person_Id', personId);
-              
-              $.ajax({
-                      type: "GET",
-                      url: restUrl,
-                      complete: function(jqXHR) {
-                                if(jqXHR.readyState === 4) {
-                                  var avatarURL = ($.parseJSON(jqXHR.responseText)).avatarURL;
-										              var activityTitle = ($.parseJSON(jqXHR.responseText)).activityTitle;
-										              var relationStatus = ($.parseJSON(jqXHR.responseText)).relationshipType;
-										              
-										              var html = [];
-						                      html.push('<div style="float: right; cursor:pointer;">');
-						                      html.push('  <div id="ClosePopup" class="ClosePopup" title="Close">[x]</div>');
-						                      html.push('</div>');
-						                      html.push('<div id="UserAvatar" class="UserAvatar">');
-						                      html.push('  <img title="Avatar" alt="Avatar" src="' + avatarURL + '"></img>'); 
-						                      html.push('</div>');
-						                      html.push('<div id="UserTitle" class="UserTitle">');
-						                      html.push('  <span>');
-						                      html.push(     activityTitle);
-						                      html.push('  </span>');
-						                      html.push('</div>');
-						                      html.push('<div id="UserAction" class="UserAction">');
-						                      html.push('<span>');
-										              html.push('</span>');
-						                      html.push('</div>');
-						                      $('.UIToolTip').html(html.join(''));
-                                }
-                      }
-              })
-            };
-            
-            function buildContent(resp) {
-              
+	        $.ajax({
+	            type: "GET",
+	            url: userInfo.restUrl
+	          }).complete( function(jqXHR) {
+	            if(jqXHR.readyState === 4) {
+	              userInfo.json = $.parseJSON(jqXHR.responseText);
+	              if( userInfo.getRelationStatus() != 'NoInfo' ) {
+	                userInfo.reBuildPopup(event);
+	              }
+	            }
+	          });
+        },
+        getUserName : function() {
+          if( userInfo.userId.length == 0 ) {
+            var userId = userInfo.jElmInfo.attr('rel');
+            if(userId == null || userId == "") {
+              userId = String(userInfo.getProfileURL());
+              userId = userId.substring(userId.lastIndexOf('/')+1);
             }
-        });
+            userInfo.userId = userId;
+          }
+          return userInfo.userId;
+        },
+        getFullName : function() {
+          return userInfo.json.fullName;
+        },
+        getStatus : function () {
+          return userInfo.json.activityTitle;
+        },
+        getProfileURL : function () {
+          return userInfo.jElmInfo.attr('href');
+        },
+        getAvatarURL : function() {
+          var avatar = userInfo.json.avatarURL;
+          if( !avatar ) {
+            avatar = '/social-resources/skin/ShareImages/Avatar.png';
+          }
+          return avatar;
+        },
+        getRelationStatus : function() {
+          return userInfo.json.relationshipType;
+        },
+        inviteUser : function(event) {
+          var action = $(this).attr('action');
+          $.ajax({
+            type: "GET",
+            url: userInfo.restUrl + '?updatedType=' + action
+          }).complete( function(jqXHR) {
+            if(jqXHR.readyState === 4) {
+              userInfo.json = $.parseJSON(jqXHR.responseText);
+              if (userInfo.hasReload) {
+                location.reload();
+              }
+            }
+          });
+          
+          display = false;
+          hideAllUserInfo(event);
+        },
+        reBuildPopup : function(event) {
+          display = true;
+          var template = buildTemplate();
+          template.find('.FullName').html(userInfo.getFullName());
+          template.find('.Status').html(userInfo.getStatus());
+          template.find('.Avatar').html('<img src="' + userInfo.getAvatarURL() + '" />');
+          template.find('.More').attr('href', userInfo.getProfileURL());          
+          if(userInfo.getRelationStatus() != "NoAction") {
+            // calculate action type.
+            template.find('.Invite').show().html( function () {
+                var relationStatus = userInfo.getRelationStatus();
+                var action = '<span action="Invite" title="Invite">Invite</span>';
+                //
+                if (relationStatus == "pending") { // Viewing is not owner
+                  action = '<span action="Accept" title="Accept" class="Accept">Accept</span>';
+                  action += '<span class="VerticalSlash"> | </span>';
+                  action += '<span action="Deny" title="Deny" class="Deny">Deny</span>';
+                } else if (relationStatus == "waiting") { // Viewing is owner
+                  action = '<span action="Revoke" title="Revoke" class="Action">Revoke</span>';
+                } else if (relationStatus == "confirmed") { // Had Connection 
+                  action = '<span action="Remove" title="Disconnect" class="Action">Disconnect</span>';
+                } else if (relationStatus == "ignored") { // Connection is removed
+                  action = '<span action="Deny" title="Deny" class="Action">Deny</span>';
+                }
+                return action;
+              }
+           ).find('span').off('click').on('click', userInfo.inviteUser);
+          } else {
+            template.find('.Invite').hide().html('');
+          }
+          
+          var container = userInfo.jElmInfo.next();
+          if(container.length == 0 || container.attr('id') != ('InfoMenuOf' + userInfo.userId)) {
+            container = userInfo.container;
+            container.attr('id', 'InfoMenuOf' + userInfo.userId).append(template);
+            container.on('mouseenter', function(event) {
+              display = true;
+              event.stopPropagation();
+            }).on('mouseleave', function(event) {
+              display = false;
+              window.setTimeout(function () { hideAllUserInfo(event);}, 500);
+              event.stopPropagation();
+            });
+            container.css('float', userInfo.jElmInfo.css('float'));
+            container.insertAfter(userInfo.jElmInfo);
+          } else {
+            // show existing popup
+            container.append(template);
+          }
+          // set default size
+          template.css({height:'auto', width: 'auto'});
+          var w = template.width();
+          var h = template.height();
+          
+          var Browser = eXo.core.Browser;
+          var X = Browser.findMouseRelativeX(container, event, false);
+          var Y = Browser.findMouseRelativeY(container, event);
+          
+          template.find('.Arrow:first').removeClass('Down Top').addClass(function(index, current) {
+            var clazz = 'Top';
+            template.css('top', -(34 + h - Y) + 'px');
+            var delta = $(template).offset().top - $(document).scrollTop();
+            var top = (delta < 0);
+            if(top){
+              $(this).css('top', '-12px');
+              template.css('left', (X - 45) + 'px');
+              template.css('top', (Y + 12) + 'px');
+            } else {
+              template.css('left', (X - 52) + 'px');
+              $(this).css('top', (h+ 20) + 'px');
+              clazz = 'Down';
+            }
+            
+            return clazz;
+          });
+
+        }
     };
-
-
-    function eventScheduler(){};
     
-    eventScheduler.prototype = {
-      set : function (func,timeout){
-        this.timer = setTimeout(func,timeout);
-      },
-      clear: function(){
-        clearTimeout(this.timer);
-      }
-    };
-
-    function Tip(){
-	    this.shown = false;
-    };
-    
-    Tip.prototype = {
-	    generate: function(){
-	        return this.tip || (this.tip = $('<span class="UIToolTip"><span class="pointyTipShadow"></span><span class="pointyTip"></span></span>'));
-	    },
-	    show: function(){
-	        if(this.shown) return;
-	        
-	        this.tip.css('margin-left',-this.tip.outerWidth()/2).fadeIn('fast');
-	        this.shown = true;
-	    },
-	    hide: function(){
-	        this.tip.fadeOut();
-	        this.shown = false;
-	    }
-    };
-})(jQuery);
+    return userInfo;
+  }
+  
+})(jQuery, document, window);

@@ -179,12 +179,10 @@ var UIActivity = {
         })(i);
       }
     }
-    var portlet = $('#UISpaceActivityStreamPortlet');
-    if(portlet.length ==0){
-      portlet = $('#UIUserActivityStreamPortlet');
-    }
-    portlet.find('a:[href*="/profile/"]').showUserInfo();
   }
 }
+
+var top = $('.UIActivity').parents(".PORTLET-FRAGMENT");
+top.find('a:[href*="/profile/"]').showUserInfo();
 
  _module.UIActivity = UIActivity;

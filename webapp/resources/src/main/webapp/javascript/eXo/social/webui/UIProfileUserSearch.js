@@ -135,4 +135,7 @@ var UIProfileUserSearch = {
 		}
 };
 
+var top = $('#UIProfileUserSearch').parents(".PORTLET-FRAGMENT");
+top.find('a:[href*="/profile/"]').showUserInfo({hasReload: true});
+    
 _module.UIProfileUserSearch = UIProfileUserSearch;

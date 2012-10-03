@@ -492,7 +492,7 @@ public class PeopleRestService implements ResourceContainer{
         peopleInfo.setActivityTitle("NoUpdates");
       }
 
-      peopleInfo.setAvatarURL((String) identity.getProfile().getProperty(Profile.AVATAR));
+      peopleInfo.setAvatarURL((String) identity.getProfile().getAvatarUrl());
 
       peopleInfo.setFullName(identity.getProfile().getFullName());
     }
