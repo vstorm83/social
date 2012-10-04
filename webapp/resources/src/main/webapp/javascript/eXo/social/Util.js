@@ -356,7 +356,10 @@
   
     return $(this).on('mouseover', function(event) {
                   var userInfo = new UserInfo($(this));
+                  var cache = window.eXo.social.Cache;
+                  cache.resetIfNeeded();
                   userInfo.hasReload = settings.hasReload;
+                  userInfo.cache = cache;
                   userInfo.init(event);
                   event.stopPropagation();
                 }).on('mouseout', function(event) {
@@ -405,7 +408,60 @@
       );
     }
   }
-
+  
+  window.eXo.social.Cache =  {
+    max_size: 500,
+    data : {},
+    size : 0,
+    flush : function () {
+	    this.data = {};
+	    this.size = 0;
+    },
+    add : function (query, results) {
+	    if(this.size > this.max_size) {
+	      this.flush();
+	    }
+	
+	    if(!this.data[query]) {
+	      this.size += 1;
+	    }
+	      
+	    this.data[query] = results;
+    },
+    get : function (query) {
+      return this.data[query];
+    },
+    resetIfNeeded : function() {
+      var c_name = "isAlive";
+      var c_value = true;
+      
+      if ( !this.getCookie(c_name) )  {
+        this.flush();
+        this.setCookie(c_name, c_value, 0.5);
+      }
+    },
+    setCookie : function(c_name, value, exprInMinute) {
+	    var c_value=escape(value) + ((exprInMinute==null) ? "" : "; expires=" + this.toExpresTime(exprInMinute) + ";");
+	    document.cookie=c_name + "=" + c_value;
+	  },
+	  getCookie : function(c_name) {
+	    var i,x,y,ARRcookies=document.cookie.split(";");
+	    for (i=0;i<ARRcookies.length;i++) {
+	      x=ARRcookies[i].substr(0,ARRcookies[i].indexOf("="));
+	      y=ARRcookies[i].substr(ARRcookies[i].indexOf("=")+1);
+	      x=x.replace(/^\s+|\s+$/g,"");
+	      if (x==c_name) {
+	        return unescape(y);
+	      }
+	    }
+	  },
+	  toExpresTime : function(numminutes) {
+      var expiryDate = new Date();
+      expiryDate.setTime(expiryDate.getTime() + (numminutes * 60 * 1000));
+      return expiryDate.toGMTString();
+    }
+  };
+  
   //
   function UserInfo(jelm) {
     var userInfo = {
@@ -419,23 +475,33 @@
         template : "",
         json : {fullName:"", activityTitle: "", avatarURL: "", relationshipType:""},
         restUrl : "",
+        cache : {},
         displayInvite : true,
         init : function(event) {
           var portal = eXo.social.portal;
           userInfo.restUrl = 'http://' + window.location.host + portal.context + '/' + portal.rest 
                       + '/social/people' + '/getPeopleInfo/' + userInfo.getUserName() + '.json';
-        
-	        $.ajax({
-	            type: "GET",
-	            url: userInfo.restUrl
-	          }).complete( function(jqXHR) {
-	            if(jqXHR.readyState === 4) {
-	              userInfo.json = $.parseJSON(jqXHR.responseText);
-	              if( userInfo.getRelationStatus() != 'NoInfo' ) {
-	                userInfo.reBuildPopup(event);
-	              }
-	            }
-	          });
+          
+          userInfo.json = userInfo.cache.get( userInfo.userId );
+          
+          if ( !userInfo.json ) { 
+		        $.ajax({
+		            type: "GET",
+		            url: userInfo.restUrl
+		          }).complete( function(jqXHR) {
+		            if(jqXHR.readyState === 4) {
+		              userInfo.json = $.parseJSON(jqXHR.responseText);
+		              userInfo.cache.add( userInfo.userId, userInfo.json );
+		              if( userInfo.getRelationStatus() != 'NoInfo' ) {
+                    userInfo.reBuildPopup(event);
+                  } 
+		            }
+		          });
+		      } else {
+			      if( userInfo.getRelationStatus() != 'NoInfo' ) {
+	            userInfo.reBuildPopup(event);
+	          }
+	        }
         },
         getUserName : function() {
           if( userInfo.userId.length == 0 ) {
@@ -469,6 +535,7 @@
         },
         inviteUser : function(event) {
           var action = $(this).attr('action');
+
           $.ajax({
             type: "GET",
             url: userInfo.restUrl + '?updatedType=' + action
