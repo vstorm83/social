@@ -544,12 +544,12 @@
 
         // Initialize a north resize handler and place it above the selection
         // layer
-        var $nResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-n-resize-handler" />')
-                .css({
-                    opacity : 0.5,
-                    position : 'absolute'
-                })
-                .insertAfter($selection);
+//        var $nResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-n-resize-handler" />')
+//                .css({
+//                    opacity : 0.5,
+//                    position : 'absolute'
+//                })
+//                .insertAfter($selection);
 
         // Initialize a north/east resize handler and place it above the
         // selection layer
@@ -562,21 +562,21 @@
 
         // Initialize an west resize handler and place it above the selection
         // layer
-        var $wResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-w-resize-handler" />')
-                .css({
-                    opacity : 0.5,
-                    position : 'absolute'
-                })
-                .insertAfter($selection);
+//        var $wResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-w-resize-handler" />')
+//                .css({
+//                    opacity : 0.5,
+//                    position : 'absolute'
+//                })
+//                .insertAfter($selection);
 
         // Initialize an east resize handler and place it above the selection
         // layer
-        var $eResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-e-resize-handler" />')
-                .css({
-                    opacity : 0.5,
-                    position : 'absolute'
-                })
-                .insertAfter($selection);
+//        var $eResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-e-resize-handler" />')
+//                .css({
+//                    opacity : 0.5,
+//                    position : 'absolute'
+//                })
+//                .insertAfter($selection);
 
         // Initialize a south/west resize handler and place it above the
         // selection layer
@@ -589,12 +589,12 @@
 
         // Initialize a south resize handler and place it above the selection
         // layer
-        var $sResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-s-resize-handler" />')
-                .css({
-                    opacity : 0.5,
-                    position : 'absolute'
-                })
-                .insertAfter($selection);
+//        var $sResizeHandler = $('<div class="image-crop-resize-handler" id="image-crop-s-resize-handler" />')
+//                .css({
+//                    opacity : 0.5,
+//                    position : 'absolute'
+//                })
+//                .insertAfter($selection);
 
         // Initialize a south/east resize handler and place it above the
         // selection layer
@@ -767,12 +767,12 @@
                             top : options.selectionPosition[1] - Math.round($nwResizeHandler.height() / 2)
                         });
 
-                    $nResizeHandler.css({
-                            cursor : 'n-resize',
-                            display : display,
-                            left : options.selectionPosition[0] + Math.round(options.selectionWidth / 2 - $neResizeHandler.width() / 2) - 1,
-                            top : options.selectionPosition[1] - Math.round($neResizeHandler.height() / 2)
-                        });
+//                    $nResizeHandler.css({
+//                            cursor : 'n-resize',
+//                            display : display,
+//                            left : options.selectionPosition[0] + Math.round(options.selectionWidth / 2 - $neResizeHandler.width() / 2) - 1,
+//                            top : options.selectionPosition[1] - Math.round($neResizeHandler.height() / 2)
+//                        });
 
                     $neResizeHandler.css({
                             cursor : 'ne-resize',
@@ -781,19 +781,19 @@
                             top : options.selectionPosition[1] - Math.round($neResizeHandler.height() / 2)
                         });
 
-                    $wResizeHandler.css({
-                            cursor : 'w-resize',
-                            display : display,
-                            left : options.selectionPosition[0] - Math.round($neResizeHandler.width() / 2),
-                            top : options.selectionPosition[1] + Math.round(options.selectionHeight / 2 - $neResizeHandler.height() / 2) - 1
-                        });
+//                    $wResizeHandler.css({
+//                            cursor : 'w-resize',
+//                            display : display,
+//                            left : options.selectionPosition[0] - Math.round($neResizeHandler.width() / 2),
+//                            top : options.selectionPosition[1] + Math.round(options.selectionHeight / 2 - $neResizeHandler.height() / 2) - 1
+//                        });
 
-                    $eResizeHandler.css({
-                            cursor : 'e-resize',
-                            display : display,
-                            left : options.selectionPosition[0] + options.selectionWidth - Math.round($neResizeHandler.width() / 2) - 1,
-                            top : options.selectionPosition[1] + Math.round(options.selectionHeight / 2 - $neResizeHandler.height() / 2) - 1
-                        });
+//                    $eResizeHandler.css({
+//                            cursor : 'e-resize',
+//                            display : display,
+//                            left : options.selectionPosition[0] + options.selectionWidth - Math.round($neResizeHandler.width() / 2) - 1,
+//                            top : options.selectionPosition[1] + Math.round(options.selectionHeight / 2 - $neResizeHandler.height() / 2) - 1
+//                        });
 
                     $swResizeHandler.css({
                             cursor : 'sw-resize',
@@ -802,12 +802,12 @@
                             top : options.selectionPosition[1] + options.selectionHeight - Math.round($swResizeHandler.height() / 2) - 1
                         });
 
-                    $sResizeHandler.css({
-                            cursor : 's-resize',
-                            display : display,
-                            left : options.selectionPosition[0] + Math.round(options.selectionWidth / 2 - $seResizeHandler.width() / 2) - 1,
-                            top : options.selectionPosition[1] + options.selectionHeight - Math.round($seResizeHandler.height() / 2) - 1
-                        });
+//                    $sResizeHandler.css({
+//                            cursor : 's-resize',
+//                            display : display,
+//                            left : options.selectionPosition[0] + Math.round(options.selectionWidth / 2 - $seResizeHandler.width() / 2) - 1,
+//                            top : options.selectionPosition[1] + options.selectionHeight - Math.round($seResizeHandler.height() / 2) - 1
+//                        });
 
                     $seResizeHandler.css({
                             cursor : 'se-resize',

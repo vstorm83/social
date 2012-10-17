@@ -204,11 +204,11 @@ public class UIAvatarUploadContent extends UIForm {
       uiAvatarUploadContent.setCroppedInfo(croppedInfos);
 
       // get cropped information
-      int x = Integer.parseInt(croppedInfos.get(X));
-      int y = Integer.parseInt(croppedInfos.get(Y));
-      int w = Integer.parseInt(croppedInfos.get(WIDTH));
-      int h = Integer.parseInt(croppedInfos.get(HEIGHT));
-
+      int x = (int)Double.parseDouble(croppedInfos.get(X));
+      int y = (int)Double.parseDouble(croppedInfos.get(Y));
+      int w = (int)Double.parseDouble(croppedInfos.get(WIDTH));
+      int h = (int)Double.parseDouble(croppedInfos.get(HEIGHT));
+      
       InputStream in = new ByteArrayInputStream(att.getImageBytes());
       
       //
@@ -359,10 +359,10 @@ public class UIAvatarUploadContent extends UIForm {
     int h_r = resizedImg.getHeight();
     
     // cropped image information on resized image
-    int x_cr = Integer.parseInt(getCroppedInfo().get(X));
-    int y_cr = Integer.parseInt(getCroppedInfo().get(Y));
-    int width_cr = Integer.parseInt(getCroppedInfo().get(WIDTH));
-    int height_cr = Integer.parseInt(getCroppedInfo().get(HEIGHT));
+    int x_cr = (int)Double.parseDouble(getCroppedInfo().get(X));
+    int y_cr = (int)Double.parseDouble(getCroppedInfo().get(Y));
+    int width_cr = (int)Double.parseDouble(getCroppedInfo().get(WIDTH));
+    int height_cr = (int)Double.parseDouble(getCroppedInfo().get(HEIGHT));
     
     // calculate the scale
     double scale_w = (double)w_o/(double)w_r;
