@@ -347,34 +347,63 @@ public class UIAvatarUploadContent extends UIForm {
   }
   
   private void crop() throws Exception {
+    int x_co = 0;
+    int y_co = 0;
+    int width_co = 0; 
+    int height_co = 0;
+    
     BufferedImage originImg = ImageIO.read(getOriginImg());
-    BufferedImage resizedImg = ImageIO.read(new ByteArrayInputStream(getResizedImgInBytes()));
-
-    // Original image information
-    int w_o = originImg.getWidth();
-    int h_o = originImg.getHeight();
     
-    // Resized image information
-    int w_r = resizedImg.getWidth();
-    int h_r = resizedImg.getHeight();
-    
-    // cropped image information on resized image
-    int x_cr = (int)Double.parseDouble(getCroppedInfo().get(X));
-    int y_cr = (int)Double.parseDouble(getCroppedInfo().get(Y));
-    int width_cr = (int)Double.parseDouble(getCroppedInfo().get(WIDTH));
-    int height_cr = (int)Double.parseDouble(getCroppedInfo().get(HEIGHT));
-    
-    // calculate the scale
-    double scale_w = (double)w_o/(double)w_r;
-    double scale_h = (double)h_o/(double)h_r;
-    
-    double scale_OR = scale_w > scale_h ? scale_h : scale_w;
-    
-    // cropped image information on original image
-    int x_co = (int)(x_cr*scale_w);
-    int y_co = (int)(y_cr*scale_h);
-    int width_co = (int) (width_cr*scale_OR); 
-    int height_co = (int) (height_cr*scale_OR);
+    //
+    if (getResizedImgInBytes() == null) {
+      int imgWidth = originImg.getWidth();
+      int imgHeight = originImg.getHeight();
+      
+      if (imgWidth != imgHeight) { // in case of image has width and height not the same
+        int cropDimension = imgWidth > imgHeight ? imgHeight : imgWidth;
+        int offset = (cropDimension == imgWidth) ? imgHeight - cropDimension : imgWidth - cropDimension;
+        
+        if (imgWidth < imgHeight) {
+          x_co = 0;
+          y_co = (int)(offset/2);
+          width_co = imgWidth;
+          height_co = imgHeight - offset;
+        } else {
+          x_co = (int)(offset/2);
+          y_co = 0;
+          width_co = imgWidth - offset;
+          height_co = imgHeight;
+        }
+      }
+    } else {
+      BufferedImage resizedImg = ImageIO.read(new ByteArrayInputStream(getResizedImgInBytes()));
+  
+      // Original image information
+      int w_o = originImg.getWidth();
+      int h_o = originImg.getHeight();
+      
+      // Resized image information
+      int w_r = resizedImg.getWidth();
+      int h_r = resizedImg.getHeight();
+      
+      // cropped image information on resized image
+      int x_cr = (int)Double.parseDouble(getCroppedInfo().get(X));
+      int y_cr = (int)Double.parseDouble(getCroppedInfo().get(Y));
+      int width_cr = (int)Double.parseDouble(getCroppedInfo().get(WIDTH));
+      int height_cr = (int)Double.parseDouble(getCroppedInfo().get(HEIGHT));
+      
+      // calculate the scale
+      double scale_w = (double)w_o/(double)w_r;
+      double scale_h = (double)h_o/(double)h_r;
+      
+      double scale_OR = scale_w > scale_h ? scale_h : scale_w;
+      
+      // cropped image information on original image
+      x_co = (int)(x_cr*scale_w);
+      y_co = (int)(y_cr*scale_h);
+      width_co = (int) (width_cr*scale_OR); 
+      height_co = (int) (height_cr*scale_OR);
+    }
     
     // sub image with new information
     BufferedImage croppedImg = originImg.getSubimage(x_co, y_co, width_co, height_co);

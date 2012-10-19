@@ -61,3 +61,13 @@ div.image-crop-resize-handler {
     overflow : hidden;
     width : 7px;
 }
+
+.UIAction .DisableButton {
+  cursor: default;
+  background: none repeat scroll 0 0 #EDEDED;
+  color: grey;
+}
+
+.UIAction .DisableButton:hover {
+  color: grey;
+}

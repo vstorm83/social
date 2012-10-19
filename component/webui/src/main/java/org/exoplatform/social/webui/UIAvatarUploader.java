@@ -74,7 +74,7 @@ public class UIAvatarUploader extends UIForm {
   private static final String FIELD_UPLOADER = "Uploader";
 
   /** The limit size for upload image. */
-  private static final int uploadLimit = 2; //MB
+  private static final int uploadLimit = 6; //MB
 
   /** List of accepted mimetype. */
   private static final String[] ACCEPTED_MIME_TYPES = new String[] {"image/jpeg", "image/jpg", "image/png",

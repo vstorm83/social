@@ -962,38 +962,48 @@
                     options.selectionPosition[1] = selectionOrigin[1] - options.selectionHeight;
 
                     break;
-                case 'image-crop-n-resize-handler' :
-                    selectionOrigin[1] += options.selectionHeight;
-                    options.selectionPosition[1] = selectionOrigin[1] - options.selectionHeight;
-
-                    resizeHorizontally = false;
-
-                    break;
+//                case 'image-crop-n-resize-handler' :
+//                    selectionOrigin[1] += options.selectionHeight;
+//                    options.selectionPosition[1] = selectionOrigin[1] - options.selectionHeight;
+//
+//                    resizeHorizontally = false;
+//
+//                    break;
                 case 'image-crop-ne-resize-handler' :
+                    // modified
+//                    selectionOrigin[1] += options.selectionHeight;
+//                    options.selectionPosition[1] = selectionOrigin[1] - options.selectionHeight;
+                    selectionOrigin[0] += options.selectionWidth;
                     selectionOrigin[1] += options.selectionHeight;
+                    options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
+                    options.selectionPosition[1] = selectionOrigin[1] - options.selectionHeight;
+                    
+                    break;
+//                case 'image-crop-w-resize-handler' :
+//                    selectionOrigin[0] += options.selectionWidth;
+//                    options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
+//
+//                    resizeVertically = false;
+//
+//                    break;
+//                case 'image-crop-e-resize-handler' :
+//                    resizeVertically = false;
+//
+//                    break;
+                case 'image-crop-sw-resize-handler' :
+                      // modified
+//                    selectionOrigin[0] += options.selectionWidth;
+//                    options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
+                    selectionOrigin[0] += options.selectionWidth;
+                    selectionOrigin[1] += options.selectionHeight;
+                    options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
                     options.selectionPosition[1] = selectionOrigin[1] - options.selectionHeight;
 
                     break;
-                case 'image-crop-w-resize-handler' :
-                    selectionOrigin[0] += options.selectionWidth;
-                    options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
-
-                    resizeVertically = false;
-
-                    break;
-                case 'image-crop-e-resize-handler' :
-                    resizeVertically = false;
-
-                    break;
-                case 'image-crop-sw-resize-handler' :
-                    selectionOrigin[0] += options.selectionWidth;
-                    options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
-
-                    break;
-                case 'image-crop-s-resize-handler' :
-                    resizeHorizontally = false;
-
-                    break;
+//                case 'image-crop-s-resize-handler' :
+//                    resizeHorizontally = false;
+//
+//                    break;
             }
 
             // Bind an event handler to the 'mousemove' event
@@ -1088,6 +1098,9 @@
                 options.selectionHeight = height;
             }
 
+            // modified temp cause by now just support display with the same width and height
+            options.selectionWidth = options.selectionHeight= Math.min(options.selectionWidth, options.selectionHeight);
+            
             if (options.selectionWidth < 0) {
                 options.selectionWidth = Math.abs(options.selectionWidth);
                 options.selectionPosition[0] = selectionOrigin[0] - options.selectionWidth;
