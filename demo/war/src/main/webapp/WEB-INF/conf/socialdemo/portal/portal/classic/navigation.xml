@@ -127,6 +127,14 @@
       <visibility>SYSTEM</visibility>
       <page-reference>portal::classic::pendingSpace</page-reference>
     </node>
+    
+    <node>
+      <uri>space-management</uri>
+      <name>space-management</name>
+      <label>#{portal.classic.spaceManagement}</label>
+      <visibility>SYSTEM</visibility>
+      <page-reference>portal::classic::space-management</page-reference>
+    </node>
    
   </page-nodes>
 </node-navigation>

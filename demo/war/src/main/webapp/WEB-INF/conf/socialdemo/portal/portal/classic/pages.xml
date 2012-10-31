@@ -370,4 +370,27 @@
       </container>
     </container>
   </page>
+  
+  <page>
+    <name>space-management</name>
+    <title>Space Creation Restriction</title>
+    <access-permissions>*:/platform/users</access-permissions>
+    <edit-permission>manager:/platform/administrators</edit-permission>
+    <container id="sociallayout" template="system:/groovy/portal/webui/container/UITableColumnContainer.gtmpl">
+      <access-permissions>*:/platform/users</access-permissions>
+      <container id="PendingSpacesPortlet" template="system:/groovy/portal/webui/container/UIContainer.gtmpl">
+        <access-permissions>*:/platform/users</access-permissions>
+        <portlet-application>
+          <portlet>
+            <application-ref>juzu-social</application-ref>
+            <portlet-ref>SpaceManagementPortlet</portlet-ref>
+          </portlet>
+          <title>Space Creation Restriction</title>
+          <access-permissions>*:/platform/users</access-permissions>
+          <show-info-bar>false</show-info-bar>
+          <show-application-state>true</show-application-state>
+        </portlet-application>
+      </container>
+    </container>
+  </page>
 </page-set>

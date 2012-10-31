@@ -23,4 +23,27 @@
        <title>Hello World Juzu Portlet</title>
      </portlet-info>
    </portlet>
+   
+   <!--Space Creation Restrictions Portlet -->
+   <portlet>
+     <portlet-name>SpaceManagementPortlet</portlet-name>
+     <display-name xml:lang="EN">Spaces Creation Restrictions Portlet</display-name>
+     <portlet-class>org.exoplatform.social.portlet.spacemanagement.SpacemanagementPortlet</portlet-class>
+     <init-param>
+       <name>juzu.run_mode</name>
+       <value>prod</value>
+     </init-param>
+          
+     <init-param>
+       <name>juzu.inject</name>
+       <value>weld</value>
+     </init-param>
+     
+     <supports>
+       <mime-type>text/html</mime-type>
+     </supports>
+     <portlet-info>
+       <title>Spaces Creation Restrictions Portlet</title>
+     </portlet-info>
+   </portlet>
 </portlet-app>

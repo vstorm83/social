@@ -1,0 +1,50 @@
+#{param name=isRestricted/}
+#{param name=restrictedGroups/}
+
+<%
+  def uiGroupListClass = isRestricted ? "UIGroupListVisible" : "UIGroupListInvisible";
+  def restrictionMsg = "Restrict who can create new spaces";
+%>
+
+<script type="text/javascript">
+
+  checkVariable();
+  
+  function checkVariable() {
+    if ( $ == undefined ) {
+      window.setTimeout("checkVariable();", 100);
+    } else {
+		  $(function() {
+		    UIRestrictSpaceCreator.iphoneSwitch('<%= isRestricted ? "on" : "off" %>', '', {switch_on_container_path: '/juzu-social/img/iphone_switch_container_off.png'});
+		  });
+    }
+  } 
+</script>
+
+<div class="UISpaceManagementPortlet">
+  <div id="ControlPanel">
+    <div id="RestrictButton" class="pull-left padding-right-btn"></div>
+    <span id="RestrictionMsg" class="lead"><%= restrictionMsg %></span>
+    <span id="hintInfo" class="icon-question-sign hint-info" title="Check to restrict creation to some specific roles."/>
+  </div>
+  <div id="GroupList" class="UIAction <%= uiGroupListClass %>">
+    <ul id="RestrictGroups" class="RestrictGroups">
+    <% if (restrictedGroups.size() > 0) { %>
+         
+           <% for (String groupKey : restrictedGroups.keySet()) { 
+               if (restrictedGroups.get(groupKey) != null) {
+                def groupInfo = restrictedGroups.get(groupKey).split(":");
+           %>
+                <li id="<%= groupKey%>"><b>member</b> of <b><%= groupInfo[1] %></b> group<a href="javascript:void(0)" class="icon-remove-circle close-btn-space" data-dismiss="alert"></a></li>
+             <% } %>
+           <% } %>
+         
+    <% } %>
+    </ul>
+    <div id="MoreGroupList"></div>
+    <div class="AddGroupButton">
+      <a id="AddGroupButton" class="btn align-center" href="javascript:void(0)" onclick="">Add Role</a>
+    </div>
+  </div>
+  <div id="PopupAddGroup" title="Select a role"></div>
+</div>

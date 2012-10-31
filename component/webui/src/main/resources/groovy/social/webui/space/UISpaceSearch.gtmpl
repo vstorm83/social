@@ -92,9 +92,11 @@ if (selectedNode.equals("all-spaces")) {
 <% uiform.begin() %>
     <!--search by name-->   
     <div class="SpaceSearchContainer ClearFix">
-       <div class="UIAction">
-         <span class="ActionButton LightBlueStyle"><a class="AddSpaceIcon" href="#" onclick="<%= uicomponent.event("AddSpace") %>" ><%= labelActionAddSpace %></a></span>
-       </div>
+       <% if (Utils.hasCreateSpacePermission(currentUserName)) { %> 
+	        <div class="UIAction">
+	          <span class="ActionButton LightBlueStyle"><a class="AddSpaceIcon" href="#" onclick="<%= uicomponent.event("AddSpace") %>" ><%= labelActionAddSpace %></a></span>
+	        </div>
+       <% } %>
 		   <label for="<%=childs.get(0).getId()%>" class="LeftContentInput">
 		     $findSpaceLabel:&nbsp; 
 		   </label>

@@ -1,0 +1,38 @@
+#{param name=allGroups/}
+
+<div class="ClearFix">
+  <div id="GroupNavigation" class="GroupNavigation"></div>
+  <span id="navText" class="nav-text">...</span>
+</div>
+<div id="GroupSelector" class="GroupSelector ClearFix">
+  <div id="LeftSelector" class="LeftSelector">
+		<div id="UISelectGroup">
+		  <ul>
+		  <% if (allGroups.size() > 0) { %>
+		    <% for (String key : allGroups.keySet()) { %>
+		        <li id="<%= key %>" title="<%= key %>">
+		          <a href="#"><%= key %></a>
+		          <ul id="">
+		            <%
+		              Map<String, String> group = allGroups.get(key);
+		              for (String groupKey : group.keySet()) {
+		              if (group.get(groupKey) != null) {
+		                def groupInfos = group.get(groupKey).split(":");
+		            %>
+		                <li id="<%= groupInfos[0] %>" val="<%= groupKey %>" title="<%= groupInfos[1] %>"><a href="javascript:void(0);"><%= groupInfos[1] %></a></li>
+		            <% } %>    
+		            <% } %>
+		          </ul>
+		        </li>
+		    <% } %>
+		  <% } %>  
+		  </ul>
+		</div>
+		<p id="msg" class="alert-info"></p>
+	</div>
+	<div id="RightSelector" class="RightSelector">
+	  <ul>
+	    <span>...</span>
+	  </ul>
+	</div>
+</div>

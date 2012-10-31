@@ -1,0 +1,11 @@
+#{param name=restrictedGroups/}
+    
+<% if (restrictedGroups. size() > 0) { %>
+     
+   <% for (String groupKey : restrictedGroups.keySet()) { 
+        def groupInfo = restrictedGroups.get(groupKey).split(":");
+   %>
+        <li id="<%= groupKey%>"><b>member</b> of <b><%= groupInfo[1] %></b> group<a href="javascript:void(0)" class="icon-remove-circle close-btn-space" data-dismiss="alert"></a></li>
+   <% } %>
+     
+<% } %>

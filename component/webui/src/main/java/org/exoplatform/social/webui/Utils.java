@@ -16,21 +16,28 @@
  */
 package org.exoplatform.social.webui;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
+import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.portal.application.PortalRequestContext;
+import org.exoplatform.portal.config.UserACL;
 import org.exoplatform.portal.mop.SiteType;
 import org.exoplatform.portal.mop.user.UserNode;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.portal.webui.workspace.UIWorkingWorkspace;
+import org.exoplatform.services.organization.Group;
+import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.manager.RelationshipManager;
+import org.exoplatform.social.core.space.GroupPrefs;
 import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.space.spi.SpaceService;
@@ -276,4 +283,36 @@ public class Utils {
     
     return nodeURL.setResource(resource).toString(); 
   }
+  
+  /**
+  * Check whether the user has permission to create space.
+  *
+  * @param userId
+  * @return
+  * @throws Exception
+  * @since 4.0.0
+  */
+    public static boolean hasCreateSpacePermission(String userId) throws Exception {
+      ExoContainer container = ExoContainerContext.getCurrentContainer();
+      UserACL userACL = (UserACL) container.getComponentInstanceOfType(UserACL.class);
+      
+      if (userId.equals(userACL.getSuperUser())) return true;
+      
+      GroupPrefs groupPrefs = (GroupPrefs) container.getComponentInstanceOfType(GroupPrefs.class);
+      
+      if (!groupPrefs.isOnRestricted()) return true;
+      
+      OrganizationService organizationService = (OrganizationService) container.getComponentInstanceOfType(OrganizationService.class);
+      
+      SpaceService spaceService = (SpaceService) container.getComponentInstanceOfType(SpaceService.class);
+      Collection<Object> memberGroups = organizationService.getGroupHandler().findGroupsOfUser(userId);
+      Map<String, String> restrictedGroups = groupPrefs.getRestrictedGroups();
+      for ( Object group : memberGroups ) {
+        Group grp = (Group)group;
+        
+        if (restrictedGroups.containsKey(grp.getId()) ) return true;
+      }
+      
+      return false;
+    }
 }
