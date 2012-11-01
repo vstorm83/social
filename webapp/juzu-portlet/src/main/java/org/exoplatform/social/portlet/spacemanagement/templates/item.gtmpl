@@ -1,3 +1,3 @@
 #{param name=groupName/}
 
-<span><b>member</b> of <b><%= groupName %></b> group</span><a href="javascript:void(0)" class="icon-remove-circle close-btn-space" data-dismiss="alert"></a>
+<span><b>member</b> of <b><%= groupName %></b> group</span><a href="javascript:void(0)" class="icon-remove-circle close-btn-space"></a>

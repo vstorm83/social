@@ -10,7 +10,7 @@
 		  <ul>
 		  <% if (allGroups.size() > 0) { %>
 		    <% for (String key : allGroups.keySet()) { %>
-		        <li id="<%= key %>" title="<%= key %>">
+		        <li id="<%= key %>" val="<%= key %>" title="<%= key %>">
 		          <a href="#"><%= key %></a>
 		          <ul id="">
 		            <%

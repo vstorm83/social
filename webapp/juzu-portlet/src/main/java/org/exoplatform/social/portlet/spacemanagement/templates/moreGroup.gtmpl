@@ -3,7 +3,7 @@
 <% if (moreRestrictedGroups. size() > 0) { %>
      <ul class="RestrictGroups">
        <% for (String group : moreRestrictedGroups) { %>
-            <li class="alert"><span><%= group %></span><a href="javascript:void(0)" class="close" data-dismiss="alert">×</a></li>
+            <li class="alert"><span><%= group %></span><a href="javascript:void(0)" class="close"></a></li>
        <% } %>
      </ul>
 <% } %>

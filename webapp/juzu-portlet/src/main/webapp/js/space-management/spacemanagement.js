@@ -10,7 +10,14 @@ var UIRestrictSpaceCreator = {
   addGroup : function(selectedElId, groupName) {
     $('#PopupAddGroup').dialog('close');
 
-    var addedContent = $('<li>');
+    var addedContent = $('<li>', {
+	    click: function () {
+	        $('#RestrictGroups').jzLoad("Controller.removeGroup()", {
+	      groupId : selectedElId
+	    }, function() {
+	    });
+	    }
+    });
 
     if ($("#RestrictGroups").children(':last-child').length == 0) {
       $("#RestrictGroups").append(addedContent);
@@ -22,14 +29,6 @@ var UIRestrictSpaceCreator = {
       groupId : selectedElId,
       groupName : groupName
     }, function() {});
-    
-    $(addedContent).closest('#RestrictGroups').on('click', 'a', function() {
-      $('#RestrictGroups').jzLoad("Controller.removeGroup()", {
-          groupId : selectedElId
-        }, function() {
-        });
-    });
-    
     
   },
   iphoneSwitch: function(start_state, strFunc, options) {
@@ -52,14 +51,12 @@ var UIRestrictSpaceCreator = {
     }
     
     // init for remove button
-    $.each($("#RestrictGroups>li"),function(idx, el) {
-      var groupId = $(this).attr('id');
-      $(el).find('a').on('click', function() {
-        $('#RestrictGroups').jzLoad("Controller.removeGroup()", {
-            groupId : groupId
+    $("#RestrictGroups").delegate('li', 'click', function() {
+      var $this = $(this);
+      $('#RestrictGroups').jzLoad("Controller.removeGroup()", {
+            groupId : $this.attr('id')
           }, function() {
           });
-      });
     });
     
     // Select group
@@ -102,7 +99,7 @@ var UIRestrictSpaceCreator = {
                                                      'id' : $(selectedEl).attr('id'),
                                                      'class' : 'displayblock'
                                                    }).on('click', function() {
-                                                       UIRestrictSpaceCreator.addGroup($(selectedEl).attr('id'), $(selectedEl).attr('val'));
+                                                       UIRestrictSpaceCreator.addGroup($(selectedEl).attr('id'), $(selectedEl).attr('title'));
                                                    }).append($('<a href="javascript:void(0)">Select this group...</a>').css({'cursor' : 'pointer',
                                                        'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
                                                    );
