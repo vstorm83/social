@@ -25,44 +25,48 @@ var UISpaceSearch = {
       PATH : '/social/spaces/suggest.json'
     },
     init: function(params) {
-			var uicomponentId = params.uicomponentId || null;
-			var defaultSpaceNameAndDesc = params.defaultSpaceNameAndDesc || null;
-			var restContextName = params.restContextName || null;
+      var uicomponentId = params.uicomponentId || null;
+      var defaultSpaceNameAndDesc = params.defaultSpaceNameAndDesc || null;
+      var restContextName = params.restContextName || null;
       var currentUserName = params.currentUserName || null;
       var typeOfRelation = params.typeOfRelation || null;
       var spaceURL = params.spaceURL || null;
       var typeOfSuggest = params.typeOfSuggest || null;
       var portalName = params.portalName || null;
       
-			var spaceSearch = document.getElementById(uicomponentId);
-			var searchEl  = $(spaceSearch).find('#SpaceSearch');
-			var searchBtn = $(spaceSearch).find('#SearchButton');
-
+      var spaceSearch = document.getElementById(uicomponentId);
+      var searchEl  = $(spaceSearch).find('#SpaceSearch');
+      var searchBtn = $(spaceSearch).find('#SearchButton');
+      var addSpaceBtn = $(spaceSearch).find('.AddSpaceIcon');
       
-			// Turn off auto-complete attribute of text-box control
-			searchEl.attr('autocomplete','off');
-			
-			if (searchEl.val().trim() ==  defaultSpaceNameAndDesc) {
-			  searchEl.css('color', UISpaceSearch.COLOR.BLUR);
-			}
-			
+      if (!addSpaceBtn.length) {
+        $(spaceSearch).find('.LeftContentInput').css({ 'width':'auto', 'padding-left':'8px' });
+      }
+      
+      // Turn off auto-complete attribute of text-box control
+      searchEl.attr('autocomplete','off');
+      
+      if (searchEl.val().trim() ==  defaultSpaceNameAndDesc) {
+        searchEl.css('color', UISpaceSearch.COLOR.BLUR);
+      }
+      
       searchEl.placeholder();
-			
-		  $(searchEl).autosuggest(buildURL(), {onSelect:function(){searchBtn.click();}, defaultVal:defaultSpaceNameAndDesc});
+      
+      $(searchEl).autosuggest(buildURL(), {onSelect:function(){searchBtn.click();}, defaultVal:defaultSpaceNameAndDesc});
 
       function buildURL() {
-	      restContextName = (restContextName) ? restContextName : UISpaceSearch.DEFAULT_REST_INFO.CONTEXT_NAME;
-	      var restURL = "/" + restContextName + "/" + portalName + UISpaceSearch.DEFAULT_REST_INFO.PATH;
+        restContextName = (restContextName) ? restContextName : UISpaceSearch.DEFAULT_REST_INFO.CONTEXT_NAME;
+        var restURL = "/" + restContextName + "/" + portalName + UISpaceSearch.DEFAULT_REST_INFO.PATH;
 
-	      restURL = restURL + '?conditionToSearch=input_value';
+        restURL = restURL + '?conditionToSearch=input_value';
 
         if (currentUserName) {
           restURL += "&currentUser=" + currentUserName;
         }
 
-	      if (typeOfRelation) {
-	        restURL += "&typeOfRelation=" + typeOfRelation;
-	      }
+        if (typeOfRelation) {
+          restURL += "&typeOfRelation=" + typeOfRelation;
+        }
 
         if (spaceURL) {
           if(typeOfSuggest == 'people') {
@@ -72,7 +76,7 @@ var UISpaceSearch = {
 
         return restURL;
       }
-	 }
+   }
 };
 
 _module.UISpaceSearch = UISpaceSearch;

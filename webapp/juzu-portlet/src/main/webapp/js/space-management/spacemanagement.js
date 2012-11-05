@@ -99,7 +99,7 @@ var UIRestrictSpaceCreator = {
                                                      'id' : $(selectedEl).attr('id'),
                                                      'class' : 'displayblock'
                                                    }).on('click', function() {
-                                                       UIRestrictSpaceCreator.addGroup($(selectedEl).attr('id'), $(selectedEl).attr('title'));
+                                                       UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
                                                    }).append($('<a href="javascript:void(0)">Select this group...</a>').css({'cursor' : 'pointer',
                                                        'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
                                                    );
