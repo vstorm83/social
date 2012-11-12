@@ -21,12 +21,9 @@ import java.util.List;
 
 import junit.framework.AssertionFailedError;
 
-import org.exoplatform.portal.config.UserPortalConfigService;
 import org.exoplatform.portal.mop.user.UserPortal;
 import org.exoplatform.portal.pom.config.POMSession;
 import org.exoplatform.portal.pom.config.POMSessionManager;
-import org.exoplatform.services.log.ExoLogger;
-import org.exoplatform.services.log.Log;
 import org.exoplatform.services.security.Authenticator;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.social.core.identity.model.Identity;
@@ -42,14 +39,9 @@ import org.exoplatform.social.core.test.AbstractCoreTest;
  */
 public class SpaceUtilsRestTest extends AbstractCoreTest {
 
-  private final Log LOG = ExoLogger.getLogger(SpaceUtilsRestTest.class);
   private IdentityStorage identityStorage;
-  private UserPortalConfigService userPortalConfigSer_;
-  /** . */
   private POMSessionManager mgr = null;
-  /** . */
   private Authenticator authenticator = null;
-  
   private List<Identity> tearDownUserList = null;
   private Identity root = null;
   
