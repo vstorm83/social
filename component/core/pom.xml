@@ -187,7 +187,25 @@
       <artifactId>exo.portal.component.test.core</artifactId>
       <scope>test</scope>
     </dependency>
+    
+    <dependency>
+      <groupId>org.exoplatform.commons</groupId>
+      <artifactId>commons-component-common</artifactId>
+      <scope>provided</scope>
+    </dependency>
 
+    <dependency>
+      <groupId>org.exoplatform.commons</groupId>
+      <artifactId>commons-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.exoplatform.commons</groupId>
+      <artifactId>commons-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+    
     <dependency>
       <groupId>org.exoplatform.portal</groupId>
       <artifactId>exo.portal.component.test.jcr</artifactId>
@@ -331,6 +349,10 @@
           <systemPropertyVariables>
             <org.jboss.byteman.contrib.bmunit.agent.port>${org.jboss.byteman.contrib.bmunit.agent.port}</org.jboss.byteman.contrib.bmunit.agent.port>
           </systemPropertyVariables>
+          <includes>
+            <include>**/InitContainerTestSuite.java</include>
+            <include>**/NoContainerTestSuite.java</include>
+          </includes>
         </configuration>
       </plugin>
 
