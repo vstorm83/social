@@ -331,6 +331,20 @@
           <version>${org.exoplatform.commons.version}</version>
           <type>jar</type>
       </dependency>
+      
+      <dependency>
+        <groupId>org.exoplatform.commons</groupId>
+        <artifactId>commons-component-common</artifactId>
+        <version>${org.exoplatform.commons.version}</version>
+        <type>jar</type>
+      </dependency>
+
+      <dependency>
+        <groupId>org.exoplatform.commons</groupId>
+        <artifactId>commons-api</artifactId>
+        <version>${org.exoplatform.commons.version}</version>
+        <type>jar</type>
+      </dependency>
 
     <dependency>
       <groupId>org.exoplatform.ws</groupId>
@@ -515,13 +529,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.jvnet.jaxb2.maven2</groupId>
-      <artifactId>maven-jaxb2-plugin</artifactId>
-      <version>${org.jvnet.jaxb2.maven2.version}</version>
-      <type>jar</type>
-    </dependency>
-
-    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
       <version>1.5.6</version>
@@ -643,6 +650,13 @@
       <version>${project.version}</version>
       <type>war</type>
     </dependency>
+    
+    <dependency>
+      <groupId>org.exoplatform.social</groupId>
+      <artifactId>social-webapp-juzu-portlet</artifactId>
+      <version>${project.version}</version>
+      <type>war</type>
+    </dependency>
 
     <dependency>
       <groupId>org.exoplatform.social</groupId>
@@ -687,9 +701,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-        <configuration>
-          <repositoryUrl>http://repository.exoplatform.org/content/groups/all/</repositoryUrl>
-        </configuration>
         <executions>
           <execution>
             <id>unpack-dependencies</id>

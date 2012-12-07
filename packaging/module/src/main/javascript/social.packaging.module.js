@@ -24,7 +24,9 @@ function getModule(params) {
     new Project("org.exoplatform.social", "social-component-common","jar", module.version);
 
   module.component.core =
-  new Project("org.exoplatform.social", "social-component-core","jar", module.version);
+  new Project("org.exoplatform.social", "social-component-core","jar", module.version).
+    addDependency(new Project("org.exoplatform.commons", "commons-component-common", "jar", platformCommonsVersion)).
+    addDependency(new Project("org.exoplatform.commons", "commons-api", "jar", platformCommonsVersion));
 
   module.component.service =
   new Project("org.exoplatform.social", "social-component-service","jar", module.version).
@@ -55,6 +57,10 @@ function getModule(params) {
 
   module.webapp.resources = new Project("org.exoplatform.social", "social-webapp-resources", "war", module.version);
   module.webapp.resources.deployName = "social-resources";
+  
+  module.webapp.juzu = {};
+  module.webapp.juzu.portlet = new Project("org.exoplatform.social", "social-webapp-juzu-portlet", "war", module.version);
+  module.webapp.juzu.portlet.deployName = "juzu-social";
 
   //module.webapp.socialExtensionPortal = new Project("org.exoplatform.social", "social-webapp-social-extension-portal", "war", module.version);
   //module.webapp.socialExtensionPortal.deployName = "social-extension-portal";

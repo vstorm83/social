@@ -61,17 +61,17 @@ public class VersionResources implements ResourceContainer {
   }
 
   /**
-   * Gets the latest eXo Social REST API version. This version number should be used as the latest and stable
+   * Get the latest eXo Social REST API version. This version number should be used as the latest and stable
    * version that is considered to include all new features and updates of eXo Social REST services.
    *
-   * @param uriInfo the uri info
-   * @param format  the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.VersionResources.Versionlastest.Get
+   * @param uriInfo The URI information.
+   * @param format  The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.VersionResources.Versionlastest.Get
    * @request
    *{code}
-   * GET: http://cloud-workspaces.com/rest/api/social/version/latest.json
+   * GET: http://localhost:8080/rest/api/social/version/latest.json
    * or
-   * GET: http://cloud-workspaces.com/rest/api/social/version/latest.xml
+   * GET: http://localhost:8080/rest/api/social/version/latest.xml
    *{code}
    * @response
    *{code:json}
@@ -97,19 +97,19 @@ public class VersionResources implements ResourceContainer {
 
 
   /**
-   * Gets eXo Social REST service versions that are supported. This is for backward compatibility. If a client
+   * Get eXo Social REST service versions that are supported. This is for backward compatibility. If a client
    * application is using an older eXo Social REST APIs version, all APIs of the version still can work. The array MUST
    * have the latest to oldest order. For example, {{{[v2, v1, v1-beta3]}}}, but not
    * {{{[v1, v2, v1-beta3]}}}.
    *
-   * @param uriInfo the uri info
-   * @param format  the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.VersionResources.Get
+   * @param uriInfo The URI information.
+   * @param format  The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.VersionResources.Get
    * @request
    *{code}
-   * GET: http://cloud-workspaces.com/rest/api/social/version/supported.json
+   * GET: http://localhost:8080/rest/api/social/version/supported.json
    * or
-   * GET: http://cloud-workspaces.com/rest/api/social/version/supported.xml
+   * GET: http://localhost:8080/rest/api/social/version/supported.xml
    *{code}
    * @response
    *{code:json}

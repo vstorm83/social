@@ -67,31 +67,31 @@ public class ActivityResources implements ResourceContainer {
   private static final int MAX_NUMBER_OF_LIKE = 100;
 
   /**
-   * Gets an activity object from a specified activity Id.
+   * Get an activity object from a specified activity Id.
    *
-   * @param uriInfo the uri request info
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity Id
-   * @param format the expected returned format
+   * @param uriInfo The uri request info.
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
    * @param showPosterIdentity When this parameter is set to true, t or 1, the returned activity will provide more
    * information for the user who posted this activity.
-   * @param numberOfComments Specifies the number of comments to be displayed along with this activity. By default,
-   * number_of_comments=0. If number_of_comments is a positive number, this number is considered as a limit number that
+   * @param numberOfComments Specify the number of comments to be displayed along with this activity. By default,
+   * _number\_of\_comments=0_. If _number_of_comments_ is a positive number, this number is considered as a limit number that
    * must be equal or less than 100. If the actual number of comments is less than the provided positive number, the
    * number of actual comments must be returned. If the total number of comments is more than 100, it is recommended to
-   * use activity/:id/comments.format instead.
-   * @param numberOfLikes Specifies the number of latest detailed likes to be returned along with this activity. By
-   * default, *number\_of\_likes=0*. If *number\_of\_likes* is a positive number, this number is considered as a limit
+   * use _activity/\:id/comments.format_ instead.
+   * @param numberOfLikes Specify the number of latest detailed likes to be returned along with this activity. By
+   * default, _number\_of\_likes=0_. If _number\_of\_likes_ is a positive number, this number is considered as a limit
    * number that must be equal or less than 100. If the total number of likes is less than the provided positive number,
    * the number of actual likes must be returned. If the total number of likes is more than 100, it is recommended to
    * use _activity/\:activityId/likes.format_ instead.
    * @param showActivityStream When this parameter is set to true, t or 1, the returned activity will provide more
    * information for the activity stream that this activity belongs to.
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activity.Get
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activity.Get
    * @authentication
    * @request
    *{code}
-   * GET: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e6f7g8h9i.json
+   * GET: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e6f7g8h9i.json
    *{code}
    * @response
    *{code:json}
@@ -116,7 +116,7 @@ public class ActivityResources implements ResourceContainer {
    *   "prettyId": "root", // or space_abcde
    *   "faviconURL": "http://demo3.exoplatform.org/favicons/exo-default.jpg",
    *   "title": "Activity Stream of Root Root",
-   *   "permaLink": "http://cloud-workspaces.com/profile/root"
+   *   "permaLink": "http://localhost:8080/profile/root"
    * } //optional
    * }
    *{code}
@@ -188,19 +188,19 @@ public class ActivityResources implements ResourceContainer {
 
 
   /**
-   * Creates an activity to an identity's activity stream. If no identity_id is specified, the activity will be created
+   * Create an activity to an identity's activity stream. If no _identity\_id_ is specified, the activity will be created
    * to the authenticated identity's activity stream.
    *
    * @param uriInfo the uri request info
-   * @param portalContainerName the associated portal container name
-   * @param format the expected returned format
-   * @param identityIdStream the optional identity stream to post this new activity to
-   * @param newActivity a new activity instance
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activity.Post
+   * @param portalContainerName The associated portal container name.
+   * @param format The expected returned format.
+   * @param identityIdStream The optional identity stream to post this new activity to.
+   * @param newActivity A new activity instance.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activity.Post
    * @authentication
    * @request
    *{code}
-   * POST: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity.json
+   * POST: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity.json
    * BODY: {"title": "Hello World!!!"}
    *{code}
    * @response
@@ -273,18 +273,18 @@ public class ActivityResources implements ResourceContainer {
   }
 
   /**
-   * Deletes an existing activity by its Id using the DELETE method. The deleted activity information will be returned
+   * Delete an existing activity by its Id using the DELETE method. The deleted activity information will be returned
    * in the JSON format.
    *
    * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activity.Delete
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activity.Delete
    * @authentication
    * @request
    *{code}
-   * DELETE: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e6f7g8h9i.json
+   * DELETE: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e6f7g8h9i.json
    *{code}
    * @response
    *{code:json}
@@ -309,7 +309,7 @@ public class ActivityResources implements ResourceContainer {
    *     "prettyId": "root", // or space_abcde
    *     "faviconURL": "http://demo3.exoplatform.org/favicons/exo-default.jpg",
    *     "title": "Activity Stream of Root Root",
-   *     "permaLink": "http://cloud-workspaces.com/profile/root"
+   *     "permaLink": "http://localhost:8080/profile/root"
    *   } //optional
    * }
    *{code}
@@ -353,19 +353,19 @@ public class ActivityResources implements ResourceContainer {
   }
 
   /**
-   * Deletes an existing activity by its Id using the POST method. The deleted activity information will be returned in
+   * Delete an existing activity by its Id using the POST method. The deleted activity information will be returned in
    * the JSON format. It is recommended to use the DELETE method, except the case that clients cannot make request via
    * this method.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activity.PostDelete
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activity.PostDelete
    * @authentication
    * @request
    *{code}
-   * POST: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/destroy/1a2b3c4d5e6f7g8h9i.json
+   * POST: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/destroy/1a2b3c4d5e6f7g8h9i.json
    *{code}
    * @response
    *{code:json}
@@ -390,7 +390,7 @@ public class ActivityResources implements ResourceContainer {
    *     "prettyId": "root", // or space_abcde
    *     "faviconURL": "http://demo3.exoplatform.org/favicons/exo-default.jpg",
    *     "title": "Activity Stream of Root Root",
-   *     "permaLink": "http://cloud-workspaces.com/profile/root"
+   *     "permaLink": "http://localhost:8080/profile/root"
    *   } //optional
    * }
    *{code}
@@ -407,17 +407,17 @@ public class ActivityResources implements ResourceContainer {
   }
 
   /**
-   * Gets the comments on an activity.
+   * Get the comments on an activity.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activitycomments.Get
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activitycomments.Get
    * @authentication
    * @request
    *{code}
-   * GET: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comments.json
+   * GET: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comments.json
    *{code}
    * @response
    *{code:json}
@@ -494,17 +494,17 @@ public class ActivityResources implements ResourceContainer {
   }
   
   /**
-   * Posts a new comment on an existing activity. The poster of this comment is an authenticated identity.
+   * Post a new comment on an existing activity. The poster of this comment is an authenticated identity.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activitycomments.Post
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activitycomments.Post
    * @authentication
    * @request
    *{code}
-   * POST: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comment.json
+   * POST: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comment.json
    * BODY: {"text": "My comment here!!!"}
    *{code}
    * @response
@@ -569,17 +569,18 @@ public class ActivityResources implements ResourceContainer {
   }
   
   /**
-   * Deletes an existing comment by its Id.
+   * Delete an existing comment by its Id.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activitycomments.Delete
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @param commentId The specified comment Id.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activitycomments.Delete
    * @authenticated
    * @request
    *{code}
-   * DELETE: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comment/123456.json
+   * DELETE: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comment/123456.json
    *{code}
    * @response
    *{code:json}
@@ -639,18 +640,18 @@ public class ActivityResources implements ResourceContainer {
   }
   
   /**
-   * Deletes an existing comment by its Id using the POST method. The deleted activity information will be returned in the JSON format. It is recommended to use the POST method, except the case that clients cannot make request via this method.
+   * Delete an existing comment by its Id using the POST method. The deleted activity information will be returned in the JSON format. It is recommended to use the POST method, except the case that clients cannot make request via this method.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param commentId the specified comment id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.Activitycomments.PostDelete
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param commentId The specified comment Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.Activitycomments.PostDelete
    * @authenticated
    * @request
    *{code}
-   * POST: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comment/destroy/123456.json
+   * POST: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/comment/destroy/123456.json
    *{code}
    * @response
    *{code:json}
@@ -677,17 +678,17 @@ public class ActivityResources implements ResourceContainer {
   
   
   /**
-   * Gets all the identities who like an existing activity.
+   * Get all the identities who like an existing activity.
    * 
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
    * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.ActivityLikes.GET
    * @authenticated
    * @request
    *{code}
-   * GET: http://localhost:8080/rest-socialdemo/private/api/social/v1-alpha3/socialdemo/activity/1a2b3c4d5e/likes.json
+   * GET: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/likes.json
    *{code}
    * @response
    *{code:json}
@@ -773,17 +774,17 @@ public class ActivityResources implements ResourceContainer {
   }
   
   /**
-   * Allows an authenticated identity to do the "like" action on an existing activity.
+   * Allow an authenticated identity to do the "like" action on an existing activity.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.ActivityLike.Post
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.ActivityLike.Post
    * @authentication
    * @request
    *{code}
-   * POST: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/like.json
+   * POST: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/like.json
    *{code}
    * @response
    *{code:json}
@@ -829,17 +830,17 @@ public class ActivityResources implements ResourceContainer {
   }
 
   /**
-   * Allows an identity to remove his "like" action on an activity.
+   * Allow an identity to remove his "like" action on an activity.
    *
-   * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.ActivityLike.Delete
+   * @param uriInfo The uri request uri
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.ActivityLike.Delete
    * @authentication
    * @request
    *{code}
-   * DELETE: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/like.json
+   * DELETE: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/like.json
    *{code}
    * @response
    *{code:json}
@@ -888,17 +889,17 @@ public class ActivityResources implements ResourceContainer {
   }
   
   /**
-   * Allows an identity to remove his "like" action on an activity. It is recommended to use the DELETE method, except the case that clients cannot make request via this method.
+   * Allow an identity to remove his "like" action on an activity. It is recommended to use the DELETE method, except the case that clients cannot make request via this method.
    *
    * @param uriInfo the uri request uri
-   * @param portalContainerName the associated portal container name
-   * @param activityId the specified activity id
-   * @param format the expected returned format
-   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha1.ActivityResource.ActivityLike.Postdestroy
+   * @param portalContainerName The associated portal container name.
+   * @param activityId The specified activity Id.
+   * @param format The expected returned format.
+   * @anchor SOCref.DevelopersReferences.RestService_APIs_v1alpha3.ActivityResource.ActivityLike.Postdestroy
    * @authentication
    * @request
    *{code}
-   * POST: http://cloud-workspaces.com/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/like/destroy.json
+   * POST: http://localhost:8080/rest/private/api/social/v1-alpha3/portal/activity/1a2b3c4d5e/like/destroy.json
    *{code}
    * @response
    *{code:json}
