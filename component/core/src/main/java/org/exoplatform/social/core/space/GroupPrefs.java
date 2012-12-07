@@ -17,14 +17,17 @@
 package org.exoplatform.social.core.space;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
+import org.exoplatform.commons.settings.api.SettingService;
+import org.exoplatform.commons.settings.api.SettingValue;
+import org.exoplatform.commons.settings.model.api.Context;
+import org.exoplatform.commons.settings.model.api.Scope;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.Group;
 import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.social.common.utils.GroupNode;
+import org.exoplatform.social.common.utils.GroupTree;
 
 /**
  * Created by The eXo Platform SAS
@@ -33,69 +36,128 @@ import org.exoplatform.services.organization.OrganizationService;
  * Oct 24, 2012  
  */
 public class GroupPrefs {
+  private static String ON_RESTRICTED_KEY = "SOCIAL_SPACE_ADMIN_ON_RESTRICTED_KEY";
+  private static String GROUP_RESTRICTED_KEY = "SOCIAL_SPACE_ADMIN_ON_RESTRICTED_KEY";
+  
+  private SettingService settingService = null;
+  private OrganizationService orgSrv = null;
+  
   private static final Log LOG = ExoLogger.getLogger(GroupPrefs.class);
-  private static Map<String, Map<String, String>> groups = new LinkedHashMap<String, Map<String, String>>();
-  private static Map<String, String> restrictedGroups = new LinkedHashMap<String, String>();
-  private static Map<String, String> platformGroup = new HashMap<String, String>();
+  private static GroupTree treeAllGroups = GroupTree.createInstance();
+  private static GroupTree treeRestrictedGroups = GroupTree.createInstance();
   
-  private static boolean isOnRestricted;
+  private boolean isOnRestricted;
   
-  private static String PLATFORM_GROUP = "/platform";
-  
-  public static Map<String, Map<String, String>> getGroups() {
-    return groups;  
+  public GroupPrefs(SettingService settingService) {
+    this.settingService = settingService;
+    this.orgSrv = SpaceUtils.getOrganizationService();
+    loadSetting();
   }
   
-  public static Map<String, String> getRestrictedGroups() {
-    return restrictedGroups;  
-  }
-  
-  public static void addRestrictedGroups(String groupId) {
+  private void loadSetting() {
     
-    restrictedGroups.put(groupId, platformGroup.get(groupId));  
+    SettingValue<?>  value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, ON_RESTRICTED_KEY);
     
-    // remove added item to source list
-//    groups.get("Platform").remove(groupId);
-  }
-  
-  public static void removeRestrictedGroups(String groupId) {
-    restrictedGroups.remove(groupId);
+    //isRestricted value
+    if (value != null) {
+      Boolean boolValue = (Boolean) value.getValue();
+      isOnRestricted = boolValue.booleanValue();
+    }
     
-    // re-add removed item to source list
-//    groups.get("Platform").put(groupId, platformGroup.get(groupId));
-  }
-  
-  public static boolean isOnRestricted() {
-    return isOnRestricted;
-  }
-
-  public static void setOnRestricted(boolean isOnRestricted) {
-    GroupPrefs.isOnRestricted = isOnRestricted;
-  }
-
-
-  static {
-    OrganizationService orgSrv = SpaceUtils.getOrganizationService();
-    Collection<Object> allGroups = null;
+    //restricted groups
+    value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY);
+    
+    if (value != null) {
+      //
+      String[] groupIds = value.getValue().toString().split(",");
+      try {
+        for(String id : groupIds) {
+          Group currentGroup = orgSrv.getGroupHandler().findGroupById(id);
+          Group parentGroup = orgSrv.getGroupHandler().findGroupById(currentGroup.getParentId());
+          Collection children = orgSrv.getGroupHandler().findGroups(currentGroup);
+          
+          treeRestrictedGroups.addSibilings(buildGroupNode(parentGroup, currentGroup, children));
+        }
+      } catch (Exception e) {
+        // 
+        LOG.warn("Cannot get all groups.");
+      }
+    }
+    
+    //all groups
+    Collection<?> allGroups = null;
     try {
-      allGroups = orgSrv.getGroupHandler().getAllGroups();
+      allGroups = orgSrv.getGroupHandler().findGroups(null);
     } catch (Exception e) {
       // 
       LOG.warn("Cannot get all groups.");
     }
     
-    platformGroup.clear();
-    
     for (Object group : allGroups) {
-      Group grp = (Group) group;
+      if (group instanceof Group) {
+        Group grp = (Group) group;
+        treeAllGroups.addSibilings(GroupNode.createInstance(grp.getId(), grp.getLabel()));
+      }
+    }
+    
+  }
+  
+  private GroupNode buildGroupNode(Group parentGroup, Group currentGroup, Collection children) {
+    GroupNode currentNode = null;
+    if (currentGroup != null) {
+      currentNode = GroupNode.createInstance(currentGroup.getId(), currentGroup.getLabel());
       
-      // Platform
-      if ( grp.getId().contains(PLATFORM_GROUP) && !grp.getId().equals(PLATFORM_GROUP)) {
-        platformGroup.put(grp.getId(), grp.getGroupName() + ":" + grp.getLabel());
+      //
+      if (parentGroup != null)
+        currentNode.setParent(GroupNode.createInstance(parentGroup.getId(), parentGroup.getLabel()));
+      
+      //
+      if (children != null) {
+        for (Object g : children) {
+          if (g instanceof Group) {
+            Group grp = (Group) g;
+            currentNode.addChildren(GroupNode.createInstance(grp.getId(), grp.getLabel()));
+          }
+        }
       }
       
     }
     
-    groups.put("Platform", platformGroup);
+    return currentNode;
   }
+  
+  public GroupTree getGroups() {
+    return treeAllGroups;  
+  }
+  
+  public static GroupTree getRestrictedGroups() {
+    return treeRestrictedGroups;  
+  }
+  
+  public void addRestrictedGroups(String groupId) {
+    try {
+      Group group = orgSrv.getGroupHandler().findGroupById(groupId);
+      treeRestrictedGroups.addSibilings(GroupNode.createInstance(group.getId(), group.getLabel()));
+      
+      //
+      this.settingService.set(Context.GLOBAL, Scope.PORTAL, GROUP_RESTRICTED_KEY, SettingValue.create(treeRestrictedGroups.toValue()));
+    } catch (Exception e) {
+      // 
+      LOG.warn("Cannot get group for '" + groupId + "'");
+    }
+  }
+  
+  public void removeRestrictedGroups(String groupId) {
+    treeRestrictedGroups.remove(groupId);
+  }
+  
+  public boolean isOnRestricted() {
+    return isOnRestricted;
+  }
+
+  public void setOnRestricted(boolean isOnRestricted) {
+    this.isOnRestricted = isOnRestricted;
+    this.settingService.set(Context.GLOBAL, Scope.PORTAL, ON_RESTRICTED_KEY, SettingValue.create(isOnRestricted));
+  }
+  
 }

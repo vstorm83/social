@@ -31,6 +31,7 @@ import org.exoplatform.portal.webui.workspace.UIPortalApplication;
 import org.exoplatform.portal.webui.workspace.UIWorkingWorkspace;
 import org.exoplatform.services.organization.Group;
 import org.exoplatform.services.organization.OrganizationService;
+import org.exoplatform.social.common.utils.GroupTree;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -306,11 +307,13 @@ public class Utils {
       
       SpaceService spaceService = (SpaceService) container.getComponentInstanceOfType(SpaceService.class);
       Collection<Object> memberGroups = organizationService.getGroupHandler().findGroupsOfUser(userId);
-      Map<String, String> restrictedGroups = groupPrefs.getRestrictedGroups();
+      GroupTree restrictedTree = groupPrefs.getRestrictedGroups();
+      
       for ( Object group : memberGroups ) {
         Group grp = (Group)group;
         
-        if (restrictedGroups.containsKey(grp.getId()) ) return true;
+        if (restrictedTree.hasNode(grp.getId()))
+            return true;
       }
       
       return false;

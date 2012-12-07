@@ -89,6 +89,11 @@
   </component>
   
   <component>
+    <key>org.exoplatform.social.core.space.GroupPrefs</key>
+    <type>org.exoplatform.social.core.space.GroupPrefs</type>
+  </component>
+  
+  <component>
     <key>org.exoplatform.social.core.application.RelationshipPublisher</key>
     <type>org.exoplatform.social.core.application.RelationshipPublisher</type>
   </component>

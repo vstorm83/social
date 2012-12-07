@@ -30,6 +30,7 @@ import org.exoplatform.social.core.processor.MentionsProcessorTest;
 import org.exoplatform.social.core.processor.OSHtmlSanitizerProcessorTest;
 import org.exoplatform.social.core.processor.TemplateParamsProcessorTest;
 import org.exoplatform.social.core.service.LinkProviderTest;
+import org.exoplatform.social.core.space.GroupPrefsTest;
 import org.exoplatform.social.core.space.SpaceLifeCycleTest;
 import org.exoplatform.social.core.space.SpaceUtilsRestTest;
 import org.exoplatform.social.core.space.spi.SpaceServiceTest;
@@ -55,6 +56,7 @@ import org.junit.runners.Suite.SuiteClasses;
  * Nov 8, 2012  
  */
 @SuiteClasses({
+  GroupPrefsTest.class,
   WhatsHotTest.class,
   ActivityManagerTest.class,
   ActivityStorageTest.class,
