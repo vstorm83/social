@@ -29,14 +29,14 @@
   </div>
   <div id="GroupList" class="UIAction <%= uiGroupListClass %>">
     <ul id="RestrictGroups" class="RestrictGroups">
-    <% if (restrictedGroups.size() > 0) { %>
+    <% def restrictedGroups = restrictedGroups.getSibilings();
+    if (restrictedGroups.size() > 0) { %>
          
-           <% for (String groupKey : restrictedGroups.keySet()) { 
-               if (restrictedGroups.get(groupKey) != null) {
-                def groupInfo = restrictedGroups.get(groupKey).split(":");
+           <% for (groupNode in restrictedGroups) {
+               def key = groupNode.getId();
+               def label = groupNode.getLabel();
            %>
-                <li id="<%= groupKey%>"><b>member</b> of <b><%= groupInfo[1] %></b> group<a href="javascript:void(0)" class="icon-remove-circle close-btn-space"></a></li>
-             <% } %>
+                <li id="<%= key%>"><b>member</b> of <b><%= label %></b> group<a href="javascript:void(0)" class="icon-remove-circle close-btn-space"></a></li>
            <% } %>
          
     <% } %>

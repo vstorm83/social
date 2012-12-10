@@ -110,6 +110,7 @@ public class GroupPrefsTest extends AbstractCoreTest {
   public void testInitGroupPrefers() throws Exception {
     assertNotNull(prefers);
     assertFalse(prefers.isOnRestricted());
+    assertTrue(prefers.getGroups().size() > 0);
   }
   
 }

@@ -37,7 +37,7 @@ import org.exoplatform.social.common.utils.GroupTree;
  */
 public class GroupPrefs {
   private static String ON_RESTRICTED_KEY = "SOCIAL_SPACE_ADMIN_ON_RESTRICTED_KEY";
-  private static String GROUP_RESTRICTED_KEY = "SOCIAL_SPACE_ADMIN_ON_RESTRICTED_KEY";
+  private static String GROUP_RESTRICTED_KEY = "SOCIAL_SPACE_ADMIN_GROUPS_RESTRICTED_KEY";
   
   private SettingService settingService = null;
   private OrganizationService orgSrv = null;
@@ -55,7 +55,6 @@ public class GroupPrefs {
   }
   
   private void loadSetting() {
-    
     SettingValue<?>  value = this.settingService.get(Context.GLOBAL, Scope.PORTAL, ON_RESTRICTED_KEY);
     
     //isRestricted value

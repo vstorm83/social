@@ -12,7 +12,7 @@ import javax.inject.Inject;
 import org.exoplatform.social.core.space.GroupPrefs;
 import org.exoplatform.social.portlet.spacemanagement.templates.main;
 import org.exoplatform.social.portlet.spacemanagement.templates.groupSelector;
-import org.exoplatform.social.portlet.spacemanagement.templates.moreGroup;
+//import org.exoplatform.social.portlet.spacemanagement.templates.moreGroup;
 import org.exoplatform.social.portlet.spacemanagement.templates.item;
 import org.exoplatform.social.portlet.spacemanagement.templates.restrictedGroups;
 
@@ -26,7 +26,7 @@ public class Controller {
 
   @Inject @Path("main.gtmpl") main main;
   @Inject @Path("groupSelector.gtmpl") groupSelector groupSelector;
-  @Inject @Path("moreGroup.gtmpl") moreGroup moreGroup;
+  //@Inject @Path("moreGroup.gtmpl") moreGroup moreGroup;
   @Inject @Path("item.gtmpl") item item;
   @Inject @Path("restrictedGroups.gtmpl") restrictedGroups restrictedGroups;
   
@@ -65,7 +65,7 @@ public class Controller {
   @Resource
   public void doSelectGroup(String groupId, String groupName) throws Exception {
     // temp process, return if group is selected
-    if (groupPrefs.getRestrictedGroups().containsKey(groupId)) return;
+    if (groupPrefs.getRestrictedGroups().hasNode(groupId)) return;
     
     // store selected group
     groupPrefs.addRestrictedGroups(groupId);
