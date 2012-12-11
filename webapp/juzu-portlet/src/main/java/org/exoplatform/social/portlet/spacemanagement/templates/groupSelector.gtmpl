@@ -15,7 +15,7 @@
                 def label = groupNode.getLabel();
 		    %>
 		        <li id="<%= key %>" val="<%= label %>" title="<%= label %>">
-		          <a href="#"><%= key %></a>
+		          <a href="javascript:void(0);"><%= label %></a>
 		          <ul id="">
 		            <%
 		              def children = groupNode.getChirldren();
