@@ -11,19 +11,21 @@
 		  <% if (allGroups.getSibilings().size() > 0) {
 		      def allGroups = allGroups.getSibilings(); 
 		      for (groupNode in allGroups) {
-		        def key = groupNode.getId().replace("/", "");
-                def label = groupNode.getLabel();
+		        def key = groupNode.getId();
+		        def elId = key.replace("/", "");
+            def label = groupNode.getLabel();
 		    %>
-		        <li id="<%= key %>" val="<%= label %>" title="<%= label %>">
+		        <li id="<%= elId %>" val="<%= key %>" title="<%= label %>">
 		          <a href="javascript:void(0);"><%= label %></a>
 		          <ul id="">
 		            <%
 		              def children = groupNode.getChirldren();
 		              for (child  in children) {
-		                def keyChild = child.getId().replace("/", "");
+		                def keyChild = child.getId();
+		                def elChildId = keyChild.replace("/", "");
 		                def labelChild = child.getLabel();
 		            %>
-		                <li id="<%= keyChild %>" val="<%= labelChild %>" title="<%= labelChild %>"><a href="javascript:void(0);"><%= labelChild %></a></li>
+		                <li id="<%= elChildId %>" val="<%= keyChild %>" title="<%= labelChild %>"><a href="javascript:void(0);"><%= labelChild %></a></li>
 		            <% } %>    
 		          </ul>
 		        </li>

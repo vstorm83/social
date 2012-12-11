@@ -10,15 +10,15 @@ var UIRestrictSpaceCreator = {
   addGroup : function(selectedElId, groupName) {
     $('#PopupAddGroup').dialog('close');
 
-    var addedContent = $('<li>', {
-	    click: function () {
-	        $('#RestrictGroups').jzLoad("Controller.removeGroup()", {
-	      groupId : selectedElId
-	    }, function() {
-	    });
-	    }
-    });
-
+    var addedContent = $('<li/>', {
+                           'id' : selectedElId
+                         }).on('click', function() {
+                           $('#RestrictGroups').jzLoad("Controller.removeGroup()", {
+                             groupId : selectedElId
+                           }, function() {
+                           });
+                         });
+                         
     if ($("#RestrictGroups").children(':last-child').length == 0) {
       $("#RestrictGroups").append(addedContent);
     } else {
@@ -90,7 +90,7 @@ var UIRestrictSpaceCreator = {
                               var parent = $(selectedEl).closest('ul').closest('li');
 
                               if ( parent.length === 1 ) {
-                                $('#navText').text($(parent).attr('id') + '>' + $(selectedEl).attr('title'));
+                                $('#navText').text($(parent).attr('title') + '>' + $(selectedEl).attr('title'));
                               } else {
                                 $('#navText').text($(selectedEl).attr('title'));
                               }
@@ -106,7 +106,17 @@ var UIRestrictSpaceCreator = {
                               
                               $('#RightSelector>ul').append(addedEl);
                            } else { // has children
-                             $('#navText').text($(selectedEl).attr('id'));
+                             $('#navText').text($(selectedEl).attr('title'));
+                             
+                             addedEl = $('<li/>', {
+							                                      'id' : $(selectedEl).attr('id'),
+							                                      'class' : 'icon-chevron-right displayblock'
+							                                    }).on('click', function() {
+							                                        UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
+							                                    }).append($('<a href="javascript:void(0)">*(any)</a>').css({'cursor' : 'pointer',
+							                                       'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
+							                                                      );
+							               $('#RightSelector>ul').append(addedEl);
                              
                              $.each(subGroups, function (idx, el) {
                                $(el).unbind('click');
@@ -116,7 +126,7 @@ var UIRestrictSpaceCreator = {
                                                       'class' : 'icon-chevron-right displayblock'
                                                     }).on('click', function() {
                                                         UIRestrictSpaceCreator.addGroup($(el).attr('val'), $(el).attr('title'));
-                                                    }).append($('<a href="javascript:void(0)">'+$(el).attr('val')+'</a>').css({'cursor' : 'pointer',
+                                                    }).append($('<a href="javascript:void(0)">'+$(el).attr('title')+'</a>').css({'cursor' : 'pointer',
                                                        'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
                                                       );
                                $('#RightSelector>ul').append(addedEl);

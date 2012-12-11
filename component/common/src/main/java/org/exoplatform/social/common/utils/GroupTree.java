@@ -49,12 +49,12 @@ public class GroupTree {
   }
   
   public GroupTree addSibilings(GroupNode ... nodes) {
-    sibilings.addAll(Arrays.asList(nodes));
+    this.sibilings.addAll(Arrays.asList(nodes));
     return this;
   }
   
   public GroupTree addSibilings(List<GroupNode> sibilings) {
-    sibilings.addAll(sibilings);
+    this.sibilings.addAll(sibilings);
     return this;
   }
   
