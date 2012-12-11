@@ -87,18 +87,20 @@ public class GroupPrefs {
     Collection<?> allGroups = null;
     try {
       allGroups = orgSrv.getGroupHandler().findGroups(null);
+      
+      for (Object group : allGroups) {
+        if (group instanceof Group) {
+          Group grp = (Group) group;
+          Group parentGroup = grp.getParentId() != null ? orgSrv.getGroupHandler().findGroupById(grp.getParentId()) : null;
+          Collection children = orgSrv.getGroupHandler().findGroups(grp);
+          treeAllGroups.addSibilings(buildGroupNode(parentGroup, grp, children));
+        }
+      }
+      
     } catch (Exception e) {
       // 
       LOG.warn("Cannot get all groups.");
     }
-    
-    for (Object group : allGroups) {
-      if (group instanceof Group) {
-        Group grp = (Group) group;
-        treeAllGroups.addSibilings(GroupNode.createInstance(grp.getId(), grp.getLabel()));
-      }
-    }
-    
   }
   
   private GroupNode buildGroupNode(Group parentGroup, Group currentGroup, Collection children) {
