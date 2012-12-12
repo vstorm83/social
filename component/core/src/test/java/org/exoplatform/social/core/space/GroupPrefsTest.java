@@ -21,6 +21,8 @@ import java.util.List;
 
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
+import org.exoplatform.social.common.utils.GroupNode;
+import org.exoplatform.social.common.utils.GroupTree;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -111,6 +113,53 @@ public class GroupPrefsTest extends AbstractCoreTest {
     assertNotNull(prefers);
     assertFalse(prefers.isOnRestricted());
     assertTrue(prefers.getGroups().size() > 0);
+  }
+  
+  public void testDownLevelGroup() throws Exception {
+    //
+    GroupNode selectedNode = null;
+    GroupTree tree = prefers.getGroups();
+    
+    //
+    for(GroupNode node : tree.getSibilings()) {
+      if (node.getChirldren().size() > 0) {
+        selectedNode = node;
+        break;
+      }
+    }
+    
+    if (selectedNode != null) {
+      prefers.downLevel(selectedNode.getId(), prefers.getGroups());
+      assertEquals(selectedNode.size(), prefers.getGroups().size());
+    }
+    
+  }
+  
+  public void testUpLevelGroup() throws Exception {
+    //
+    GroupNode selectedNode = null;
+    GroupTree tree = prefers.getGroups();
+    
+    int originSize = tree.size();
+    
+    //
+    for(GroupNode node : tree.getSibilings()) {
+      if (node.getChirldren().size() > 0) {
+        selectedNode = node;
+        break;
+      }
+    }
+    
+    if (selectedNode != null) {
+      //test::execute down level
+      prefers.downLevel(selectedNode.getId(), prefers.getGroups());
+      assertEquals(selectedNode.size(), prefers.getGroups().size());
+      
+      //test:: execute up level
+      prefers.upLevel(prefers.getGroups());
+      assertEquals(originSize, prefers.getGroups().size());
+    }
+    
   }
   
 }

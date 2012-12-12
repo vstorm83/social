@@ -143,7 +143,5 @@ public class GroupTree {
     
     return sb.toString();
   }
-
-  
   
 }

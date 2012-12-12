@@ -76,6 +76,17 @@ public class Controller {
              .render();
   }
   
+  @Ajax
+  @Resource
+  public void doAccessChildGroup(String groupId) throws Exception {
+    if (groupPrefs.getGroups().hasNode(groupId) == false) return;
+    
+    groupPrefs.getGroups().access(groupId);
+    groupSelector.with()
+                 .allGroups(groupPrefs.getGroups())
+                 .render();
+  }
+  
   
   @Ajax
   @Resource
