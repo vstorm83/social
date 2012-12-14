@@ -106,25 +106,32 @@ public class GroupPrefs {
   
   private GroupNode buildGroupNode(Group parentGroup, Group currentGroup, Collection children) {
     GroupNode currentNode = null;
-    if (currentGroup != null) {
-      currentNode = GroupNode.createInstance(currentGroup.getId(), currentGroup.getLabel());
-      
-      //
-      if (parentGroup != null)
-        currentNode.setParent(GroupNode.createInstance(parentGroup.getId(), parentGroup.getLabel()));
-      
-      //
-      if (children != null) {
-        for (Object g : children) {
-          if (g instanceof Group) {
-            Group grp = (Group) g;
-            currentNode.addChildren(GroupNode.createInstance(grp.getId(), grp.getLabel()));
+    try {
+      if (currentGroup != null) {
+        currentNode = GroupNode.createInstance(currentGroup.getId(), currentGroup.getLabel());
+        
+        //
+        if (parentGroup != null)
+          currentNode.setParent(GroupNode.createInstance(parentGroup.getId(), parentGroup.getLabel()));
+        
+        //
+        if (children != null) {
+          for (Object g : children) {
+            if (g instanceof Group) {
+              Group grp = (Group) g;
+              Collection subChildren = orgSrv.getGroupHandler().findGroups(grp);
+              GroupNode child = GroupNode.createInstance(grp.getId(), grp.getLabel());
+              child.setHasChildren(subChildren.size() > 0);
+              currentNode.addChildren(child);
+            }
           }
         }
+        
       }
-      
+    } catch (Exception e) {
+      // 
+      LOG.warn("Cannot build group node.");
     }
-    
     return currentNode;
   }
   
@@ -162,20 +169,39 @@ public class GroupPrefs {
     this.settingService.set(Context.GLOBAL, Scope.PORTAL, ON_RESTRICTED_KEY, SettingValue.create(isOnRestricted));
   }
   
-  public void downLevel(String groupKey, GroupTree tree) {
-    GroupNode node = tree.getNode(groupKey);
+  public boolean hasParent(String groupKey) {
     try {
-      if (node != null) {
-        List<GroupNode> myChildren = node.getChirldren();
-        if (node.getChirldren().size() > 0) {
+      if (groupKey == null) {
+        GroupNode curGroup = getGroups().getSibilings().get(0);
+        return curGroup.hasParent();
+      } else {
+        Group selectedGroup = orgSrv.getGroupHandler().findGroupById(groupKey);
+        return selectedGroup.getParentId() != null;
+      }  
+    } catch (Exception e) {
+      return false;
+    }
+  }
+  
+  public void downLevel(String groupKey, GroupTree tree) {
+    
+    try {
+      Group selectedGroup = orgSrv.getGroupHandler().findGroupById(groupKey);
+      if (selectedGroup != null) {
+        Group parentGroup = orgSrv.getGroupHandler().findGroupById(selectedGroup.getParentId());
+        Collection parentChildren = orgSrv.getGroupHandler().findGroups(parentGroup);
+
+        if (parentChildren.size() > 0) {
           tree.clear();
         }
         
-        for (GroupNode groupNode : myChildren) {
-          Group parentGroup = groupNode.getParent() != null ? orgSrv.getGroupHandler().findGroupById(groupNode.getParent().getId()) : null;
-          Group group = orgSrv.getGroupHandler().findGroupById(groupNode.getId());
-          Collection children = orgSrv.getGroupHandler().findGroups(group);
-          tree.addSibilings(buildGroupNode(parentGroup, group, children));
+        for (Object group : parentChildren) {
+          if (group instanceof Group) {
+            Group grp = (Group) group;
+            Group newParentGroup = grp.getParentId() != null ? orgSrv.getGroupHandler().findGroupById(grp.getParentId()) : null;
+            Collection newchildren = orgSrv.getGroupHandler().findGroups(grp);
+            tree.addSibilings(buildGroupNode(newParentGroup, grp, newchildren));
+          }
         }
         
       }
@@ -211,6 +237,9 @@ public class GroupPrefs {
                 tree.addSibilings(buildGroupNode(newParentGroup, grp, newchildren));
               }
             }
+          } else { // root node
+            tree.clear();
+            loadSetting();
           }
         }
         

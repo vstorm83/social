@@ -1,4 +1,5 @@
 #{param name=allGroups/}
+#{param name=isRootNode/}
 
 <div class="ClearFix">
   <div id="GroupNavigation" class="GroupNavigation"></div>
@@ -6,6 +7,9 @@
 </div>
 <div id="GroupSelector" class="GroupSelector ClearFix">
   <div id="LeftSelector" class="LeftSelector">
+    <% if (!isRootNode) {%>
+    <div id="UpLevelBtn">...</div>
+    <% } %>
 		<div id="UISelectGroup">
 		  <ul>
 		  <% if (allGroups.getSibilings().size() > 0) {
@@ -24,9 +28,13 @@
 		                def keyChild = child.getId();
 		                def elChildId = keyChild.replace("/", "");
 		                def labelChild = child.getLabel();
+		                if (child.hasChildren()) {
 		            %>
+		                <li id="<%= elChildId %>" val="<%= keyChild %>" title="<%= labelChild %>"><a id="SubChild" href="javascript:void(0);"><%= labelChild %></a></li>
+		            <%  } else { %>
 		                <li id="<%= elChildId %>" val="<%= keyChild %>" title="<%= labelChild %>"><a href="javascript:void(0);"><%= labelChild %></a></li>
-		            <% } %>    
+		            <%  } %>    
+		            <% } %> 
 		          </ul>
 		        </li>
 		    <% } %>

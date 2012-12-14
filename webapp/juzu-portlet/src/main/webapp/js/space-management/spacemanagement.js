@@ -8,8 +8,6 @@ var UIRestrictSpaceCreator = {
     });*/
   },
   addGroup : function(selectedElId, groupName) {
-    $('#PopupAddGroup').dialog('close');
-
     var addedContent = $('<li/>', {
                            'id' : selectedElId
                          }).on('click', function() {
@@ -30,6 +28,117 @@ var UIRestrictSpaceCreator = {
       groupName : groupName
     }, function() {});
     
+  },
+  initTree: function() {
+    
+    //
+    $('#PopupAddGroup').find('#UpLevelBtn').on('click', function() {
+      $('#PopupAddGroup').dialog('close');
+		  var popupHTML = $('.UISpaceManagementPortlet').find('#PopupAddGroup');
+		  if (popupHTML.length == 0) {
+		    $('.UISpaceManagementPortlet').append($('<div/>', {
+		      'id' : 'PopupAddGroup',
+		      'title': 'Select a role'
+		    }));
+		  }
+		  
+		  $('#PopupAddGroup').empty();
+		  $('#PopupAddGroup').jzLoad("Controller.backToParentGroup()", {}, function() {
+		    UIRestrictSpaceCreator.initTree();
+		    $('#PopupAddGroup').dialog({width:'auto'});
+		  });
+	  });
+
+	  selectedGroup = null;
+	  $('#msg').html('');
+	  $('#RightSelector>ul').html('');
+	  $('#navText').text('...');
+	  $('#UISelectGroup').jstree({ "plugins" : ["themes","html_data","ui","crrm"], "core" : { "initially_open" : [ "phtml_1" ] } })
+	                     .bind("select_node.jstree", function (event, data) {
+	                       
+	                       $('#RightSelector>ul').html('');
+	                       selectedGroup = data.rslt.obj.attr("id");
+                         selectedGroupId = data.rslt.obj.attr("val");
+	                       var selectedEl = $(this).find('#' + selectedGroup);
+	                       var subGroups = selectedEl.find('li');
+	                       
+	                       // nav
+	                       $('#GroupNavigation').html("");
+	                       
+	                       var subGroupNum = subGroups.length;
+	                       var addedEl = null;
+	                       $(selectedEl).unbind('dblclick');
+	                       if ( subGroupNum === 0 ) {  // has no children
+	                          var parent = $(selectedEl).closest('ul').closest('li');
+	
+	                          if ( parent.length === 1 ) {
+	                            $('#navText').text($(parent).attr('title') + '>' + $(selectedEl).attr('title'));
+	                          } else {
+	                            $('#navText').text($(selectedEl).attr('title'));
+	                          }
+	                          
+	                          addedEl = $('<li/>', {
+	                                                 'id' : $(selectedEl).attr('id'),
+	                                                 'class' : 'displayblock'
+	                                               }).on('click', function() {
+	                                                   $('#PopupAddGroup').dialog('close');
+	                                                   UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
+	                                               }).append($('<a href="javascript:void(0)">Select this group...</a>').css({'cursor' : 'pointer',
+	                                                   'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
+	                                               );
+	                          
+	                          $('#RightSelector>ul').append(addedEl);
+	                          
+	                          //
+	                          if ($(selectedEl).find('a').attr('id') == "SubChild") {
+		                          $('#PopupAddGroup').dialog('close');
+		                          var popupHTML = $('.UISpaceManagementPortlet').find('#PopupAddGroup');
+		                          if (popupHTML.length == 0) {
+		                            $('.UISpaceManagementPortlet').append($('<div/>', {
+		                              'id' : 'PopupAddGroup',
+		                              'title': 'Select a role'
+		                            }));
+		                          }
+		                          
+		                          $('#PopupAddGroup').jzLoad("Controller.doAccessChildGroup()", {
+		                            groupId : selectedGroupId
+		                          }, function() {
+		                            UIRestrictSpaceCreator.initTree();
+		                            $('#PopupAddGroup').dialog({width:'auto'});
+		                          });
+	                          }
+	                       } else { // has children
+	                         $('#navText').text($(selectedEl).attr('title'));
+	                         
+	                         addedEl = $('<li/>', {
+	                                                              'id' : $(selectedEl).attr('id'),
+	                                                              'class' : 'icon-chevron-right displayblock'
+	                                                            }).on('click', function() {
+	                                                                $('#PopupAddGroup').dialog('close');
+	                                                                UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
+	                                                            }).append($('<a href="javascript:void(0)">*(any)</a>').css({'cursor' : 'pointer',
+	                                                               'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
+	                                                                              );
+	                                       $('#RightSelector>ul').append(addedEl);
+	                         
+	                         $.each(subGroups, function (idx, el) {
+	                           $(el).unbind('click');
+	                           
+	                           addedEl = $('<li/>', {
+	                                                  'id' : $(el).attr('id'),
+	                                                  'class' : 'icon-chevron-right displayblock'
+	                                                }).on('click', function() {
+	                                                    $('#PopupAddGroup').dialog('close');
+	                                                    UIRestrictSpaceCreator.addGroup($(el).attr('val'), $(el).attr('title'));
+	                                                }).append($('<a href="javascript:void(0)">'+$(el).attr('title')+'</a>').css({'cursor' : 'pointer',
+	                                                   'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
+	                                                  );
+	                           $('#RightSelector>ul').append(addedEl);
+	                         });
+	                       }
+	                       
+	   $('#msg').html('');
+	 });
   },
   iphoneSwitch: function(start_state, strFunc, options) {
     
@@ -65,76 +174,8 @@ var UIRestrictSpaceCreator = {
     $('#PopupAddGroup').jzLoad('Controller.doAddGroup()', {}, function() {});
 
     $('#AddGroupButton').on('click', function() { 
-      
-      $('#PopupAddGroup').dialog({width:'auto'});
-      
-      selectedGroup = null;
-      $('#msg').html('');
-      $('#RightSelector>ul').html('');
-      $('#navText').text('...');
-      $('#UISelectGroup').jstree({ "plugins" : ["themes","html_data","ui","crrm"], "core" : { "initially_open" : [ "phtml_1" ] } })
-                         .bind("select_node.jstree", function (event, data) {
-                           
-                           $('#RightSelector>ul').html('');
-                           selectedGroup = data.rslt.obj.attr("id");
-                           var selectedEl = $(this).find('#' + selectedGroup);
-                           var subGroups = selectedEl.find('li');
-                           
-                           // nav
-                           $('#GroupNavigation').html("");
-                           
-                           var subGroupNum = subGroups.length;
-                           var addedEl = null;
-                           $(selectedEl).unbind('dblclick');
-                           if ( subGroupNum === 0 ) {  // has no children
-                              var parent = $(selectedEl).closest('ul').closest('li');
-
-                              if ( parent.length === 1 ) {
-                                $('#navText').text($(parent).attr('title') + '>' + $(selectedEl).attr('title'));
-                              } else {
-                                $('#navText').text($(selectedEl).attr('title'));
-                              }
-                              
-                              addedEl = $('<li/>', {
-                                                     'id' : $(selectedEl).attr('id'),
-                                                     'class' : 'displayblock'
-                                                   }).on('click', function() {
-                                                       UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
-                                                   }).append($('<a href="javascript:void(0)">Select this group...</a>').css({'cursor' : 'pointer',
-                                                       'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
-                                                   );
-                              
-                              $('#RightSelector>ul').append(addedEl);
-                           } else { // has children
-                             $('#navText').text($(selectedEl).attr('title'));
-                             
-                             addedEl = $('<li/>', {
-							                                      'id' : $(selectedEl).attr('id'),
-							                                      'class' : 'icon-chevron-right displayblock'
-							                                    }).on('click', function() {
-							                                        UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
-							                                    }).append($('<a href="javascript:void(0)">*(any)</a>').css({'cursor' : 'pointer',
-							                                       'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
-							                                                      );
-							               $('#RightSelector>ul').append(addedEl);
-                             
-                             $.each(subGroups, function (idx, el) {
-                               $(el).unbind('click');
-                               
-                               addedEl = $('<li/>', {
-                                                      'id' : $(el).attr('id'),
-                                                      'class' : 'icon-chevron-right displayblock'
-                                                    }).on('click', function() {
-                                                        UIRestrictSpaceCreator.addGroup($(el).attr('val'), $(el).attr('title'));
-                                                    }).append($('<a href="javascript:void(0)">'+$(el).attr('title')+'</a>').css({'cursor' : 'pointer',
-                                                       'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
-                                                      );
-                               $('#RightSelector>ul').append(addedEl);
-                             });
-                           }
-                           
-                           $('#msg').html('');
-                         })
+      UIRestrictSpaceCreator.initTree();   
+      $('#PopupAddGroup').dialog({width:'auto'});   
     });
 
     // create the switch

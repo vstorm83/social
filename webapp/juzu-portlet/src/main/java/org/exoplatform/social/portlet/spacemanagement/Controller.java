@@ -47,6 +47,7 @@ public class Controller {
   public void doAddGroup() throws Exception {
     groupSelector.with()
                  .allGroups(groupPrefs.getGroups())
+                 .isRootNode(!groupPrefs.hasParent(null))
                  .render();
   }
   
@@ -79,14 +80,22 @@ public class Controller {
   @Ajax
   @Resource
   public void doAccessChildGroup(String groupId) throws Exception {
-    if (groupPrefs.getGroups().hasNode(groupId) == false) return;
-    
-    groupPrefs.getGroups().access(groupId);
+    groupPrefs.downLevel(groupId, groupPrefs.getGroups());
     groupSelector.with()
                  .allGroups(groupPrefs.getGroups())
+                 .isRootNode(!groupPrefs.hasParent(groupId))
                  .render();
   }
   
+  @Ajax
+  @Resource
+  public void backToParentGroup() throws Exception {
+    groupPrefs.upLevel(groupPrefs.getGroups());
+    groupSelector.with()
+                 .allGroups(groupPrefs.getGroups())
+                 .isRootNode(!groupPrefs.hasParent(null))
+                 .render();
+  }
   
   @Ajax
   @Resource

@@ -32,6 +32,7 @@ public class GroupNode {
   private String id;
   private String label;
   private GroupNode parent;
+  private boolean hasChildren;
   
   private GroupNode(String id, String label) {
     chirldren = new LinkedList<GroupNode>();
@@ -67,6 +68,14 @@ public class GroupNode {
     return this.parent != null;
   }
   
+  public boolean hasChildren() {
+    return hasChildren;
+  }
+
+  public void setHasChildren(boolean hasChildren) {
+    this.hasChildren = hasChildren;
+  }
+
   public void setParent(GroupNode parent) {
     this.parent = parent;
   }
