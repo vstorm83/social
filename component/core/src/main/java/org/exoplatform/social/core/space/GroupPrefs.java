@@ -17,7 +17,6 @@
 package org.exoplatform.social.core.space;
 
 import java.util.Collection;
-import java.util.List;
 
 import org.exoplatform.commons.settings.api.SettingService;
 import org.exoplatform.commons.settings.api.SettingValue;
