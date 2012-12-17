@@ -32,22 +32,20 @@ var UIRestrictSpaceCreator = {
   initTree: function() {
     
     //
-    $('#PopupAddGroup').find('#UpLevelBtn').on('click', function() {
-      $('#PopupAddGroup').dialog('close');
-		  var popupHTML = $('.UISpaceManagementPortlet').find('#PopupAddGroup');
-		  if (popupHTML.length == 0) {
-		    $('.UISpaceManagementPortlet').append($('<div/>', {
-		      'id' : 'PopupAddGroup',
-		      'title': 'Select a role'
-		    }));
-		  }
-		  
-		  $('#PopupAddGroup').empty();
-		  $('#PopupAddGroup').jzLoad("Controller.backToParentGroup()", {}, function() {
-		    UIRestrictSpaceCreator.initTree();
-		    $('#PopupAddGroup').dialog({width:'auto'});
-		  });
-	  });
+    $('#UpLevelBtn').css('cursor', 'pointer').on('click', function() {
+      var uiDialog = $('.UIDialog');
+
+      $('#PopupAddGroup').empty().append($('<div class="UpdateContent"></div>'));
+      $('#PopupAddGroup').find('div.UpdateContent').jzLoad('Controller.backToParentGroup()', {}, function() {
+        uiDialog.find('.UpdateContent').remove();
+        uiDialog.append($('#PopupAddGroup').find('div.UpdateContent'));
+        UIRestrictSpaceCreator.initTree();
+        uiDialog.dialog({
+          width : 'auto'
+        });
+      });
+
+    });
 
 	  selectedGroup = null;
 	  $('#msg').html('');
@@ -81,7 +79,7 @@ var UIRestrictSpaceCreator = {
 	                                                 'id' : $(selectedEl).attr('id'),
 	                                                 'class' : 'displayblock'
 	                                               }).on('click', function() {
-	                                                   $('#PopupAddGroup').dialog('close');
+	                                                 $('.UIDialog').dialog("close");
 	                                                   UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
 	                                               }).append($('<a href="javascript:void(0)">Select this group...</a>').css({'cursor' : 'pointer',
 	                                                   'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
@@ -91,21 +89,17 @@ var UIRestrictSpaceCreator = {
 	                          
 	                          //
 	                          if ($(selectedEl).find('a').attr('id') == "SubChild") {
-		                          $('#PopupAddGroup').dialog('close');
-		                          var popupHTML = $('.UISpaceManagementPortlet').find('#PopupAddGroup');
-		                          if (popupHTML.length == 0) {
-		                            $('.UISpaceManagementPortlet').append($('<div/>', {
-		                              'id' : 'PopupAddGroup',
-		                              'title': 'Select a role'
-		                            }));
-		                          }
-		                          
-		                          $('#PopupAddGroup').jzLoad("Controller.doAccessChildGroup()", {
-		                            groupId : selectedGroupId
-		                          }, function() {
-		                            UIRestrictSpaceCreator.initTree();
-		                            $('#PopupAddGroup').dialog({width:'auto'});
-		                          });
+	                            $('#PopupAddGroup').empty().append($('<div class="UpdateContent"></div>'));
+	                            $('#PopupAddGroup').find('div.UpdateContent').jzLoad("Controller.doAccessChildGroup()", {
+	                              groupId : selectedGroupId
+	                            }, function() {
+	                              $('.UIDialog').find('div.UpdateContent').remove();
+	                              $('.UIDialog').append($('#PopupAddGroup').find('div.UpdateContent'));
+	                              UIRestrictSpaceCreator.initTree();
+	                              $('.UIDialog').dialog({
+	                                width : 'auto'
+	                              });
+	                            });
 	                          }
 	                       } else { // has children
 	                         $('#navText').text($(selectedEl).attr('title'));
@@ -114,7 +108,7 @@ var UIRestrictSpaceCreator = {
 	                                                              'id' : $(selectedEl).attr('id'),
 	                                                              'class' : 'icon-chevron-right displayblock'
 	                                                            }).on('click', function() {
-	                                                                $('#PopupAddGroup').dialog('close');
+	                                                              $('.UIDialog').dialog("close");
 	                                                                UIRestrictSpaceCreator.addGroup($(selectedEl).attr('val'), $(selectedEl).attr('title'));
 	                                                            }).append($('<a href="javascript:void(0)">*(any)</a>').css({'cursor' : 'pointer',
 	                                                               'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
@@ -128,7 +122,7 @@ var UIRestrictSpaceCreator = {
 	                                                  'id' : $(el).attr('id'),
 	                                                  'class' : 'icon-chevron-right displayblock'
 	                                                }).on('click', function() {
-	                                                    $('#PopupAddGroup').dialog('close');
+	                                                  $('.UIDialog').dialog("close");
 	                                                    UIRestrictSpaceCreator.addGroup($(el).attr('val'), $(el).attr('title'));
 	                                                }).append($('<a href="javascript:void(0)">'+$(el).attr('title')+'</a>').css({'cursor' : 'pointer',
 	                                                   'color': 'blue', 'padding-left': '10px', 'white-space': 'nowrap', 'margin-left' :'10px'})
@@ -170,12 +164,12 @@ var UIRestrictSpaceCreator = {
     
     // Select group
     var selectedGroup = null;
-    $('#PopupAddGroup').empty();
-    $('#PopupAddGroup').jzLoad('Controller.doAddGroup()', {}, function() {});
+    $('#PopupAddGroup').empty().append($('<div class="UIDialog"><div class="UpdateContent"></div></div>'));
+    $('#PopupAddGroup').find('div.UpdateContent').jzLoad('Controller.doAddGroup()', {}, function() {});
 
     $('#AddGroupButton').on('click', function() { 
       UIRestrictSpaceCreator.initTree();   
-      $('#PopupAddGroup').dialog({width:'auto'});   
+      $(".UIDialog").dialog({ width : 'auto'}); 
     });
 
     // create the switch
