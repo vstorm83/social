@@ -9,6 +9,7 @@ import juzu.template.Template;
 
 import javax.inject.Inject;
 
+import org.exoplatform.social.common.utils.GroupTree;
 import org.exoplatform.social.core.space.GroupPrefs;
 import org.exoplatform.social.portlet.spacemanagement.templates.main;
 import org.exoplatform.social.portlet.spacemanagement.templates.groupSelector;
@@ -90,7 +91,9 @@ public class Controller {
   @Ajax
   @Resource
   public void backToParentGroup() throws Exception {
-    groupPrefs.upLevel(groupPrefs.getGroups());
+    GroupTree newTree = groupPrefs.upLevel(groupPrefs.getGroups());
+    groupPrefs.setGroups(newTree);
+    
     groupSelector.with()
                  .allGroups(groupPrefs.getGroups())
                  .isRootNode(!groupPrefs.hasParent(null))

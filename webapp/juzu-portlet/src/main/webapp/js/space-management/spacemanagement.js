@@ -33,7 +33,7 @@ var UIRestrictSpaceCreator = {
   initTree : function() {
 
     //
-    $('#UpLevelBtn').css('cursor', 'pointer').on('click', function() {
+    $('#UpLevelBtn').off('click').css('cursor', 'pointer').on('click', function() {
       var uiDialog = $('.UIDialog');
 
       $('#PopupAddGroup').empty().append($('<div class="UpdateContent"></div>'));

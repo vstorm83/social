@@ -138,6 +138,10 @@ public class GroupPrefs {
     return treeAllGroups;  
   }
   
+  public void setGroups(GroupTree tree) {
+    this.treeAllGroups = tree;
+  }
+  
   public static GroupTree getRestrictedGroups() {
     return treeRestrictedGroups;  
   }
@@ -211,41 +215,43 @@ public class GroupPrefs {
   }
 
   
-  public void upLevel(GroupTree tree) {
+  public GroupTree upLevel(GroupTree tree) {
     GroupNode groupNode = tree.getSibilings().size() > 0 ? tree.getSibilings().get(0) : null;
+    GroupTree newTree = GroupTree.createInstance();
     try {
+
       if (groupNode != null) {
         GroupNode myParent = groupNode.getParent();
         if (myParent != null) {
-          
-          //get parent
+
+          // get parent
           Group parentGroup = orgSrv.getGroupHandler().findGroupById(myParent.getId());
+          Collection<?> children = null;
           if (parentGroup.getParentId() != null) {
-            tree.clear();
-            
-            //get ancestor
             Group ancestorGroup = orgSrv.getGroupHandler().findGroupById(parentGroup.getParentId());
-            Collection<?> children = orgSrv.getGroupHandler().findGroups(ancestorGroup);
-            
-            //get children of ancestor, then push into tree
-            for (Object group : children) {
-              if (group instanceof Group) {
-                Group grp = (Group) group;
-                Group newParentGroup = grp.getParentId() != null ? orgSrv.getGroupHandler().findGroupById(grp.getParentId()) : null;
-                Collection newchildren = orgSrv.getGroupHandler().findGroups(grp);
-                tree.addSibilings(buildGroupNode(newParentGroup, grp, newchildren));
-              }
-            }
-          } else { // root node
-            tree.clear();
-            loadSetting();
+            children = orgSrv.getGroupHandler().findGroups(ancestorGroup);
+          } else {
+            children = orgSrv.getGroupHandler().findGroups(null);
           }
+
+          // get children of ancestor, then push into tree
+          for (Object group : children) {
+            if (group instanceof Group) {
+              Group grp = (Group) group;
+              Group newParentGroup = grp.getParentId() != null ? orgSrv.getGroupHandler().findGroupById(grp.getParentId()) : null;
+              Collection newchildren = orgSrv.getGroupHandler().findGroups(grp);
+              newTree.addSibilings(buildGroupNode(newParentGroup, grp, newchildren));
+            }
+          }
+
         }
-        
+
       }
+      return newTree;
     } catch (Exception e) {
-      // 
+      //
       LOG.warn("Cannot down level of node.");
+      return newTree;
     }
   }
   
