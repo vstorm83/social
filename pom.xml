@@ -670,6 +670,20 @@
         <version>${project.version}</version>
         <type>war</type>
       </dependency>
+      <!--
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social-webapp-juzu-portlet</artifactId>
+        <version>${project.version}</version>
+        <type>war</type>
+      </dependency>
+      <dependency>
+        <groupId>org.exoplatform.social</groupId>
+        <artifactId>social-webapp-juzu-portlet</artifactId>
+        <version>${project.version}</version>
+        <type>pom</type>
+      </dependency>
+      -->
       <dependency>
         <groupId>org.exoplatform.social</groupId>
         <artifactId>social-extension-config</artifactId>
@@ -873,17 +887,6 @@
         <groupId>org.juzu</groupId>
         <artifactId>juzu-bom-core</artifactId>
         <version>${org.juzu.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.juzu</groupId>
-        <artifactId>juzu-core</artifactId>
-        <version>${org.juzu.version}</version>
-        <exclusions>
-          <exclusion>
-            <artifactId>servlet-api</artifactId>
-            <groupId>javax.servlet</groupId>
-          </exclusion>
-        </exclusions>
       </dependency>
     </dependencies>
   </dependencyManagement>
