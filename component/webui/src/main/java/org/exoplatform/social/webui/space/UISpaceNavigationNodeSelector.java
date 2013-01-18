@@ -400,7 +400,6 @@ public class UISpaceNavigationNodeSelector extends UIContainer {
       }
 
       DataStorage dataService = uiNodeSelector.getApplicationComponent(DataStorage.class);
-
       // get selected page
       String pageId = selectedPageNode.getPageRef();
       Page selectPage = (pageId != null) ? dataService.getPage(pageId) : null;

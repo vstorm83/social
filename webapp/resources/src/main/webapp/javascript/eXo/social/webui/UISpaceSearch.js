@@ -15,7 +15,8 @@
  * along with this program; if not, see<http://www.gnu.org/licenses/>.
  */
 
-var UISpaceSearch = {
+(function($) {	
+	var UISpaceSearch = {
     COLOR : {
       FOCUS : "#000000",
       BLUR : "#C7C7C7"
@@ -25,6 +26,7 @@ var UISpaceSearch = {
       PATH : '/social/spaces/suggest.json'
     },
     init: function(params) {
+
       var uicomponentId = params.uicomponentId || null;
       var defaultSpaceNameAndDesc = params.defaultSpaceNameAndDesc || null;
       var restContextName = params.restContextName || null;
@@ -33,7 +35,6 @@ var UISpaceSearch = {
       var spaceURL = params.spaceURL || null;
       var typeOfSuggest = params.typeOfSuggest || null;
       var portalName = params.portalName || null;
-      
       var spaceSearch = document.getElementById(uicomponentId);
       var searchEl  = $(spaceSearch).find('#SpaceSearch');
       var searchBtn = $(spaceSearch).find('#SearchButton');
@@ -79,4 +80,6 @@ var UISpaceSearch = {
    }
 };
 
-_module.UISpaceSearch = UISpaceSearch;
+return UISpaceSearch;
+})($);
+
