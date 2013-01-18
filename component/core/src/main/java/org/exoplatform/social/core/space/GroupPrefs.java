@@ -18,10 +18,11 @@ package org.exoplatform.social.core.space;
 
 import java.util.Collection;
 
-import org.exoplatform.commons.settings.api.SettingService;
-import org.exoplatform.commons.settings.api.SettingValue;
-import org.exoplatform.commons.settings.model.api.Context;
-import org.exoplatform.commons.settings.model.api.Scope;
+import org.exoplatform.commons.api.settings.SettingService;
+import org.exoplatform.commons.api.settings.SettingValue;
+import org.exoplatform.commons.api.settings.data.Context;
+import org.exoplatform.commons.api.settings.data.Scope;
+
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.Group;
