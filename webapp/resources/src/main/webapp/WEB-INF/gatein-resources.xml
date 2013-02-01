@@ -31,6 +31,7 @@
   </portal-skin>
 
   <module>
+    <load-group>social-utils</load-group>
     <name>social-core</name> <!-- provides core utility for reuse (browser, dom level) -->
     <script>
       <path>/javascript/htmlparser.js</path>
@@ -42,6 +43,7 @@
 
   <module>
     <name>social-ui-profile</name>
+    <load-group>social-people</load-group>
     <script>
        <path>/javascript/eXo/social/webui/UIProfile.js</path>
     </script>
@@ -59,6 +61,7 @@
   
   <module>
     <name>socialUtil</name>
+    <load-group>social-utils</load-group>
     <script>
        <path>/javascript/eXo/social/SocialUtil.js</path>
     </script>
@@ -66,6 +69,7 @@
   
   <module>
     <name>social-ui-user-search</name>
+    <load-group>social-people</load-group>
     <script>
        <path>/javascript/eXo/social/webui/UIProfileUserSearch.js</path>
     </script>
@@ -86,6 +90,7 @@
   
   <module>
     <name>social-ui-space-search</name>
+    <load-group>social-spaces</load-group>
     <script>
        <path>/javascript/eXo/social/webui/UISpaceSearch.js</path>
     </script>
@@ -106,6 +111,7 @@
   
   <module>
     <name>social-ui-space-member-suggestion</name>
+    <load-group>social-spaces</load-group>
     <script>
        <path>/javascript/eXo/social/webui/UISpaceMemberSuggestion.js</path>
     </script>
@@ -126,6 +132,7 @@
   
   <module>
     <name>social-ui-space-app-name-edition</name>
+    <load-group>social-spaces</load-group>
     <script>
        <path>/javascript/eXo/social/webui/UISpaceAppNameEdition.js</path>
     </script>
@@ -143,6 +150,7 @@
 
   <module>
     <name>social-ui-activity-composer</name>
+    <load-group>social-as</load-group>
     <script>
        <path>/javascript/eXo/social/webui/UIComposer.js</path>
     </script>
@@ -167,6 +175,7 @@
 
   <module>
     <name>social-ui-activity</name>
+    <load-group>social-as</load-group>
     <script>
       <path>/javascript/eXo/social/webui/UIActivity.js</path>
     </script>
@@ -191,6 +200,7 @@
 
   <module>
     <name>social-ui-link-activity-composer</name>
+    <load-group>social-as</load-group>
     <script>
       <path>/javascript/eXo/social/webui/UIComposerLinkExtension.js</path>
     </script>
@@ -208,6 +218,7 @@
 
   <module>
     <name>social-ui-customize-control</name>
+    <load-group>social-utils</load-group>
     <script>
       <path>/javascript/eXo/social/webui/UICustomizeControl.js</path>
     </script>
@@ -229,6 +240,7 @@
   
   <module>
     <name>social-category-selector</name>
+    <load-group>social-spaces</load-group>
     <script>
       <path>/javascript/eXo/social/webui/UIApplicationCategorySelector.js</path>
     </script>
@@ -250,6 +262,7 @@
   
   <module>
     <name>socialPlugin</name>
+    <load-group>social-utils</load-group>
     <script>
       <path>/javascript/eXo/social/Util.js</path>
     </script>
@@ -258,8 +271,10 @@
       <as>jQuery</as>
     </depends>
   </module>
+
   <module>
     <name>mentionsPlugin</name>
+    <load-group>social-as</load-group>
     <script>
       <path>/javascript/eXo/jquery.exomentions.js</path>
     </script>
@@ -272,10 +287,13 @@
       <as>mentions</as>
     </depends>
   </module>
+
   <module>
     <name>mentionsLib</name>
+    <load-group>social-as</load-group>
     <script>
       <path>/javascript/eXo/underscore.js</path>
     </script>
   </module>
+
 </gatein-resources>
