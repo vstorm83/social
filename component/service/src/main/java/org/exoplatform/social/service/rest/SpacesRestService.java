@@ -29,6 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.security.RolesAllowed;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -203,13 +204,14 @@ public class SpacesRestService implements ResourceContainer {
    */
   @GET
   @Path("lastVisitedSpace/list.{format}")
+  @RolesAllowed("users")
   public Response getLastVisitedSpace(@Context UriInfo uriInfo,
                                   @PathParam("portalName") String portalName,
                                   @PathParam("format") String format,
                                   @QueryParam("appId") String appId,
                                   @QueryParam("offset") int offset,
                                   @QueryParam("limit") int limit) throws Exception {
-    checkAuthenticatedRequest();
+
     
     MediaType mediaType = Util.getMediaType(format, new String[]{format});
     ConversationState state = ConversationState.getCurrent();
