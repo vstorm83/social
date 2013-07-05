@@ -136,7 +136,8 @@ public class UISpaceMenu extends UIContainer {
     for (String appInfo : appInfos) {
       String[] appInfoParts = appInfo.split(":");
       if (appInfoParts[0].equals(appName) || appInfoParts[1].equals(appName)) {
-        return appInfoParts[0];
+        //get real appID: remove context value (remote/local/webapp_name)        
+        return appName.substring(appName.lastIndexOf('.')+1, appName.length());
       }
     }
     
