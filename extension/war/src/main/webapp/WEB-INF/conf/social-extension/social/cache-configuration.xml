@@ -317,6 +317,10 @@
               <field name="maxEntries"><int>${cache.exo.social.RelationshipsCache.Capacity:10000}</int></field>
               <field name="lifespan"><long>-1</long></field>
            </object>
+        </object-param>
+         <object-param>
+            <name>SuggestionsCache</name>
+            <description></description>
            <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
               <field name="name"><string>SuggestionsCache</string></field>
               <field name="strategy"><string>NONE</string></field>
@@ -350,20 +354,6 @@
         <object-param>
           <name>ActivitiesCache</name>
           <description>The JBoss Cache configuration for the ActivitiesCache</description>
-          <object type="org.exoplatform.services.cache.impl.jboss.ea.EAExoCacheConfig">
-            <field name="name">
-              <string>ActivitiesCache</string>
-            </field>
-            <field name="expirationTimeout">
-              <long>${cache.exo.social.ActivitiesCache.TimeToLive:-1}</long>
-            </field>
-            <field name="maxNodes">
-             <int>${cache.exo.social.ActivitiesCache.Capacity:4000}</int>
-            </field>
-            <field name="distributed">
-              <boolean>true</boolean>
-            </field>
-          </object>
            <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
               <field name="name"><string>ActivitiesCache</string></field>
               <field name="strategy"><string>NONE</string></field>
@@ -408,20 +398,6 @@
         <object-param>
           <name>SpacesCache</name>
           <description>The JBoss Cache configuration for the SpacesCache</description>
-          <object type="org.exoplatform.services.cache.impl.jboss.ea.EAExoCacheConfig">
-            <field name="name">
-              <string>SpacesCache</string>
-            </field>
-            <field name="expirationTimeout">
-              <long>${cache.exo.social.SpacesCache.TimeToLive:86400}</long>
-            </field>
-            <field name="maxNodes">
-             <int>${cache.exo.social.SpacesCache.Capacity:2000}</int>
-            </field>
-            <field name="distributed">
-              <boolean>true</boolean>
-            </field>
-          </object>
            <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
               <field name="name"><string>SpacesCache</string></field>
               <field name="strategy"><string>NONE</string></field>
