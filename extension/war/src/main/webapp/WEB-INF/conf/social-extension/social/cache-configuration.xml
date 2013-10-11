@@ -48,7 +48,7 @@
                     <description>The JBoss Cache configuration for the IdentityCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>IdentityCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.IdentityCache.Capacity:300}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.IdentityCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -69,7 +69,7 @@
                     <description>The JBoss Cache configuration for the IdentityIndexCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>IdentityIndexCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.IdentityIndexCache.Capacity:300}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.IdentityIndexCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -90,7 +90,7 @@
                     <description>The JBoss Cache configuration for the ProfileCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>ProfileCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.ProfileCache.Capacity:300}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.ProfileCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -111,7 +111,7 @@
                     <description>The JBoss Cache configuration for the IdentitiesCountCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>IdentitiesCountCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.IdentitiesCountCache.Capacity:2000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.IdentitiesCountCache.TimeToLive:86400}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -132,7 +132,7 @@
                     <description>The JBoss Cache configuration for the IdentitiesCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>IdentitiesCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.IdentitiesCache.Capacity:2000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.IdentitiesCache.TimeToLive:86400}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -154,7 +154,7 @@
                     <description>The JBoss Cache configuration for the RelationshipCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>RelationshipCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.RelationshipCache.Capacity:10000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.RelationshipCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -175,7 +175,7 @@
                     <description>The JBoss Cache configuration for the RelationshipFromIdentityCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>RelationshipFromIdentityCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.RelationshipFromIdentityCache.Capacity:10000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.RelationshipFromIdentityCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -196,7 +196,7 @@
                     <description>The JBoss Cache configuration for the RelationshipsCountCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>RelationshipsCountCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.RelationshipsCountCache.Capacity:10000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.RelationshipsCountCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -217,7 +217,7 @@
                     <description>The JBoss Cache configuration for the RelationshipsCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>RelationshipsCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.RelationshipsCache.Capacity:10000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.RelationshipsCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -238,7 +238,7 @@
                     <description></description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>SuggestionsCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.SuggestionsCache.Capacity:800}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.SuggestionsCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -261,7 +261,7 @@
                     <description>The JBoss Cache configuration for the ActivityCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>ActivityCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.ActivityCache.Capacity:6000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.ActivityCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -282,7 +282,7 @@
                     <description>The JBoss Cache configuration for the ActivitiesCountCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>ActivitiesCountCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.ActivitiesCountCache.Capacity:4000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.ActivitiesCountCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -303,7 +303,7 @@
                     <description>The JBoss Cache configuration for the ActivitiesCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>ActivitiesCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.ActivitiesCache.Capacity:4000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.ActivitiesCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -326,7 +326,7 @@
                     <description>The JBoss Cache configuration for the SpaceCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>SpaceCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.SpaceCache.Capacity:4000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.SpaceCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -347,7 +347,7 @@
                     <description>The JBoss Cache configuration for the SpaceRefCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>SpaceRefCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.SpaceRefCache.Capacity:400}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.SpaceRefCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -368,7 +368,7 @@
                     <description>The JBoss Cache configuration for the SpacesCountCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>SpacesCountCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.SpacesCountCache.Capacity:2000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.SpacesCountCache.TimeToLive:-1}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
@@ -399,7 +399,7 @@
                     <description>The JBoss Cache configuration for the SpacesCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>SpacesCache</string></field>
-                        <field name="strategy"><string>LRU</string></field>
+                        <field name="strategy"><string>LIRS</string></field>
                         <field name="maxEntries"><int>${cache.exo.social.SpacesCache.Capacity:2000}</int></field>
                         <field name="lifespan"><long>${cache.exo.social.SpacesCache.TimeToLive:86400}</long></field>
                         <field name="replicated"><boolean>true</boolean></field>
