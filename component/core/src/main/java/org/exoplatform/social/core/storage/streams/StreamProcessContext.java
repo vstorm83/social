@@ -28,6 +28,7 @@ public class StreamProcessContext extends ProcessorContextImpl {
   public static String NEW_ACTIVITY_PROCESS = "NEW_ACTIVITY";
   public static String NEW_ACTIVITY_RELATIONS_PROCESS = "NEW_ACTIVITY_FOR_RELATIONS";
   public static String UPDATE_ACTIVITY_PROCESS = "UPDATE_ACTIVITY";
+  public static String UPDATE_ACTIVITY_REF = "UPDATE_ACTIVITY_REF";
   public static String UPDATE_ACTIVITY_COMMENTER_PROCESS = "UPDATE_ACTIVITY_COMMENTER";
   public static String DELETE_ACTIVITY_PROCESS = "DELETE_ACTIVITY";
   public static String DELETE_COMMENT_PROCESS = "DELETE_COMMENT";
@@ -39,6 +40,7 @@ public class StreamProcessContext extends ProcessorContextImpl {
   public static String REMOVE_SPACE_MEMBER_ACTIVITY_PROCESS = "REMOVE_SPACE_MEMBER_ACTIVITY";
   public static String UPGRADE_STREAM_PROCESS = "UPGRADE_STREAM_ACTIVITY";
   public static String LAZY_UPGRADE_STREAM_PROCESS = "LAZY_UPGRADE_STREAM_ACTIVITY";
+  public static String LOAD_ACTIVITIES_STREAM_PROCESS = "LOAD_ACTIVITIES_STREAM_ACTIVITY";
   
   public final static String OWNER = "OWNER";
   public final static String ACTIVITY = "ACTIVITY";
@@ -49,6 +51,7 @@ public class StreamProcessContext extends ProcessorContextImpl {
   public final static String MENTIONERS = "MENTIONERS";
   public final static String COMMENTERS = "COMMENTERS";
   public final static String LIMIT = "LIMIT";
+  public final static String OLD_LAST_UPDATED = "OLD_LAST_UPDATED";
   public final static String ACTIVITY_LIST = "ACTIVITY_LIST";
   
   
@@ -150,5 +153,14 @@ public class StreamProcessContext extends ProcessorContextImpl {
   
   public int getLimit() {
     return getProperty(LIMIT, int.class);
+  }
+  
+  public StreamProcessContext oldLastUpdated(long oldLastUpdated) {
+    setProperty(OLD_LAST_UPDATED, oldLastUpdated);
+    return this;
+  }
+  
+  public long getOldLastUpdated() {
+    return getProperty(OLD_LAST_UPDATED, long.class);
   }
 }

@@ -58,7 +58,7 @@ public class StreamInvocationHelper {
       
     } finally {
       if (ctx.isTraced()) {
-        LOG.info(processCtx.getTraceLog());
+        LOG.debug(processCtx.getTraceLog());
       }
       
     }
@@ -84,7 +84,7 @@ public class StreamInvocationHelper {
       //beforeAsync(); Why do we need to save here? Can make the problem with ADD_PROPERTY
       ctx.getServiceExecutor().execute(StreamProcessorFactory.savePoster(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -97,10 +97,10 @@ public class StreamInvocationHelper {
     return false;
   }
   
-  public static ProcessContext update(ExoSocialActivity activity, String[] mentioners) {
+  public static ProcessContext update(ExoSocialActivity activity, String[] mentioners, long oldUpdated) {
     //
     StreamProcessContext processCtx = StreamProcessContext.getIntance(StreamProcessContext.UPDATE_ACTIVITY_PROCESS, ctx);
-    processCtx.activity(activity).mentioners(mentioners);
+    processCtx.activity(activity).mentioners(mentioners).oldLastUpdated(oldUpdated);
     
     try {
       if (ctx.isAsync()) {
@@ -112,7 +112,7 @@ public class StreamInvocationHelper {
       
     } finally {
       if (ctx.isTraced()) {
-        LOG.info(processCtx.getTraceLog());
+        LOG.debug(processCtx.getTraceLog());
       }
       
     }
@@ -120,17 +120,40 @@ public class StreamInvocationHelper {
     return processCtx;
   }
   
-  public static ProcessContext updateCommenter(Identity commenter, ExoSocialActivity activity, String[] commenters) {
+  public static ProcessContext updateHidable(Identity owner, ExoSocialActivity activity) {
+    //
+    StreamProcessContext processCtx = StreamProcessContext.getIntance(StreamProcessContext.UPDATE_ACTIVITY_REF, ctx);
+    processCtx.activity(activity).mentioners(activity.getMentionedIds()).identity(owner);
+    
+    try {
+      if (ctx.isAsync()) {
+        beforeAsync();
+        ctx.getServiceExecutor().async(StreamProcessorFactory.updateHidable(), processCtx);
+      } else {
+        ctx.getServiceExecutor().execute(StreamProcessorFactory.updateHidable(), processCtx);
+      }
+      
+    } finally {
+      if (ctx.isTraced()) {
+        LOG.debug(processCtx.getTraceLog());
+      }
+      
+    }
+    
+    return processCtx;
+  }
+  
+  public static ProcessContext updateCommenter(Identity commenter, ExoSocialActivity activity, String[] commenters, long oldUpdated) {
     //
     StreamProcessContext processCtx = StreamProcessContext.getIntance(StreamProcessContext.UPDATE_ACTIVITY_COMMENTER_PROCESS, ctx);
-    processCtx.identity(commenter).activity(activity).commenters(commenters);
+    processCtx.identity(commenter).activity(activity).commenters(commenters).oldLastUpdated(oldUpdated);
     
     try {
       //beforeAsync(); this point can make the problem with ADD_PROPERTY exception
       //
       ctx.getServiceExecutor().execute(StreamProcessorFactory.updateCommenter(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -148,7 +171,7 @@ public class StreamInvocationHelper {
       //
       ctx.getServiceExecutor().execute(StreamProcessorFactory.deleteCommentStream(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -165,7 +188,7 @@ public class StreamInvocationHelper {
       //beforeAsync();
       ctx.getServiceExecutor().execute(StreamProcessorFactory.unlikeActivity(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -183,7 +206,7 @@ public class StreamInvocationHelper {
       //org.exoplatform.services.cms.impl.Utils
       ctx.getServiceExecutor().execute(StreamProcessorFactory.likeActivity(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -200,7 +223,7 @@ public class StreamInvocationHelper {
       //
       ctx.getServiceExecutor().execute(StreamProcessorFactory.deleteConnectStream(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -221,7 +244,7 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -243,7 +266,7 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -260,7 +283,7 @@ public class StreamInvocationHelper {
       //
       ctx.getServiceExecutor().execute(StreamProcessorFactory.removeSpaceMemberStream(), processCtx);
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -283,7 +306,7 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -306,7 +329,7 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -329,7 +352,7 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -352,7 +375,7 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;
@@ -375,7 +398,22 @@ public class StreamInvocationHelper {
       }
       
     } finally {
-      LOG.info(processCtx.getTraceLog());
+      LOG.debug(processCtx.getTraceLog());
+    }
+    
+    return processCtx;
+  }
+  
+  public static ProcessContext loadFeed(Identity owner) {
+    //
+    SocialServiceContext ctx = SocialServiceContextImpl.getInstance();
+    StreamProcessContext processCtx = StreamProcessContext.getIntance(StreamProcessContext.LOAD_ACTIVITIES_STREAM_PROCESS, ctx);
+    processCtx.identity(owner);
+    
+    try {
+        ctx.getServiceExecutor().async(StreamProcessorFactory.loadFeed(), processCtx);
+    } finally {
+      LOG.debug(processCtx.getTraceLog());
     }
     
     return processCtx;

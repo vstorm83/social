@@ -18,11 +18,11 @@ package org.exoplatform.social.core.storage.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -40,9 +40,12 @@ import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
 import org.exoplatform.social.core.chromattic.entity.ActivityRef;
 import org.exoplatform.social.core.chromattic.entity.ActivityRefListEntity;
+import org.exoplatform.social.core.chromattic.entity.HidableEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.chromattic.entity.StreamsEntity;
 import org.exoplatform.social.core.chromattic.filter.JCRFilterLiteral;
+import org.exoplatform.social.core.chromattic.utils.ActivityRefIterator;
+import org.exoplatform.social.core.chromattic.utils.ActivityRefList;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
@@ -309,23 +312,114 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
         activityRef.setLastUpdated(activity.getUpdated().getTime());
       }
       
+      long oldUpdated = streamCtx.getOldLastUpdated();  
       //activity's poster != comment's poster
       //don't have on My Activity stream
-      int count = getActivityRefs(identityEntity, activityEntity, ActivityRefType.MY_ACTIVITIES);
-      if (count == 0) {
+      boolean has = hasActivityRefs(identityEntity, activityEntity, ActivityRefType.MY_ACTIVITIES, oldUpdated);
+      if (has == false) {
         manageRefList(new UpdateContext(commenter, null), activityEntity, ActivityRefType.MY_ACTIVITIES);
       }
       //post comment also put the activity on feed if have not any
-      count = getActivityRefs(identityEntity, activityEntity, ActivityRefType.FEED);
-      if (count == 0) {
+      has = hasActivityRefs(identityEntity, activityEntity, ActivityRefType.FEED, oldUpdated);
+      if (has == false) {
         manageRefList(new UpdateContext(commenter, null), activityEntity, ActivityRefType.FEED);
       }
-      
+      //create activityref for owner's activity
+      createRefForPoster(activityEntity, oldUpdated);
     } catch (NodeNotFoundException e) {
       LOG.warn("Failed to updateCommenter Activity references.");
     }
   }
 
+  private void createRefForPoster(ActivityEntity activityEntity, long oldUpdated) throws NodeNotFoundException {
+    boolean has;
+    //poster if not migration
+    IdentityEntity posterIdentity = activityEntity.getIdentity();
+    has = hasActivityRefs(posterIdentity, activityEntity, ActivityRefType.MY_ACTIVITIES, oldUpdated);
+    if (has == false) {
+      addRefList(posterIdentity, activityEntity, ActivityRefType.MY_ACTIVITIES, false);
+      LOG.debug("createRefForPoster::MyActivities stream :" + posterIdentity.getRemoteId());
+    }
+    //post comment also put the activity on feed if have not any
+    has = hasActivityRefs(posterIdentity, activityEntity, ActivityRefType.FEED, oldUpdated);
+    if (has == false) {
+      addRefList(posterIdentity, activityEntity, ActivityRefType.FEED, false);
+      LOG.debug("createRefForPoster::Feed stream :" + posterIdentity.getRemoteId());
+    }
+  }
+  
+  @Override
+  public void update(ProcessContext ctx) {
+    
+    try {
+      StreamProcessContext streamCtx = ObjectHelper.cast(StreamProcessContext.class, ctx);
+      ExoSocialActivity activity = streamCtx.getActivity();
+
+      ActivityEntity activityEntity = _findById(ActivityEntity.class, activity.getId());
+      Collection<ActivityRef> references = activityEntity.getActivityRefs();
+      Set<String> ids = new HashSet<String>();
+        
+      for (ActivityRef ref : references) {
+        ids.add(ref.getId());
+      }
+      
+      if (ids.size() > 0) {
+        for(String id : ids) {
+          ActivityRef old =_findById(ActivityRef.class, id);
+          LOG.debug("ActivityRef will be deleted: " + old.toString());
+          ActivityRefListEntity refList = old.getDay().getMonth().getYear().getList();
+          //
+          if (refList.isOnlyUpdate(old, activity.getUpdated().getTime())) {
+            old.setName("" + activity.getUpdated().getTime());
+            old.setLastUpdated(activity.getUpdated().getTime());
+          } else {
+            ActivityRef newRef = refList.getOrCreated(activity.getUpdated().getTime());
+            newRef.setLastUpdated(activity.getUpdated().getTime());
+            newRef.setActivityEntity(activityEntity);
+            getSession().remove(old);
+          }
+          
+        }
+      }
+      //mentioners
+      addMentioner(streamCtx.getMentioners(), activityEntity);
+    } catch (Exception e) {
+      LOG.warn("Failed to update Activity references.", e);
+    }
+  }
+  
+  @Override
+  public void updateHidable(ProcessContext ctx) {
+    
+    try {
+      StreamProcessContext streamCtx = ObjectHelper.cast(StreamProcessContext.class, ctx);
+      ExoSocialActivity activity = streamCtx.getActivity();
+
+      ActivityEntity activityEntity = _findById(ActivityEntity.class, activity.getId());
+      Collection<ActivityRef> references = activityEntity.getActivityRefs();
+      
+      //Case of update hidden activity after migration
+      if (references == null || references.size() == 0) {
+        savePoster(ctx);
+        save(ctx);
+      }
+        
+      HidableEntity hidableActivity = _getMixin(activityEntity, HidableEntity.class, true);
+      hidableActivity.setHidden(activity.isHidden());
+      for (ActivityRef ref : references) {
+        if (hidableActivity.getHidden() == false) {
+          ref.getDay().inc();
+        } else {
+          ref.getDay().desc();
+        }
+      }
+      
+    } catch (Exception e) {
+      LOG.warn("Failed to update Activity references when change the visibility of activity.", e);
+    }
+  }
+
+  /**
   @Override
   public void update(ProcessContext ctx) {
     
@@ -337,17 +431,20 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
       Collection<ActivityRef> references = activityEntity.getActivityRefs();
 
       for (ActivityRef ref : references) {
+        if (_hasMixin(ref, HidableEntity.class) == false) {
+          _getMixin(ref, HidableEntity.class, true);
+        }
+        
         ref.setName("" + activity.getUpdated().getTime());
         ref.setLastUpdated(activity.getUpdated().getTime());
 
       }
-
       //mentioners
       addMentioner(streamCtx.getMentioners(), activityEntity);
     } catch (NodeNotFoundException e) {
       LOG.warn("Failed to update Activity references.");
     }
-  }
+  }*/
   
   @Override
   public void deleteComment(ProcessContext ctx) {
@@ -396,7 +493,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
 
   @Override
   public List<ExoSocialActivity> getFeed(Identity owner, int offset, int limit) {
-    return getActivities(ActivityRefType.FEED, owner, offset, limit);
+    return getActivitiesNotQuery(ActivityRefType.FEED, owner, offset, limit);
   }
 
   @Override
@@ -407,7 +504,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
   @Override
   public List<ExoSocialActivity> getConnections(Identity owner, int offset, int limit) {
     
-    return getActivities(ActivityRefType.CONNECTION, owner, offset, limit);
+    return getActivitiesNotQuery(ActivityRefType.CONNECTION, owner, offset, limit);
   }
 
   @Override
@@ -417,7 +514,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
 
   @Override
   public List<ExoSocialActivity> getMySpaces(Identity owner, int offset, int limit) {
-    return getActivities(ActivityRefType.MY_SPACES, owner, offset, limit);
+    return getActivitiesNotQuery(ActivityRefType.MY_SPACES, owner, offset, limit);
   }
 
   @Override
@@ -437,7 +534,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
 
   @Override
   public List<ExoSocialActivity> getMyActivities(Identity owner, int offset, int limit) {
-    return getActivities(ActivityRefType.MY_ACTIVITIES, owner, offset, limit);
+    return getActivitiesNotQuery(ActivityRefType.MY_ACTIVITIES, owner, offset, limit);
   }
 
   @Override
@@ -658,7 +755,9 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
         
         //
         ExoSocialActivity a = getStorage().getActivity(current.getActivityEntity().getId());
-            
+        if (a.isHidden() == true) {
+          continue;
+        }
         got.add(a);
 
       }
@@ -669,6 +768,41 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     
     return got;
   }
+  
+  private List<ExoSocialActivity> getActivitiesNotQuery(ActivityRefType type, Identity owner, int offset, int limit) {
+    List<ExoSocialActivity> got = new LinkedList<ExoSocialActivity>();
+    try {
+      IdentityEntity identityEntity = identityStorage._findIdentityEntity(owner.getProviderId(), owner.getRemoteId());
+      
+      ActivityRefListEntity refList = type.refsOf(identityEntity);
+      ActivityRefList list = new ActivityRefList(refList);
+
+      int nb = 0;
+      ActivityRefIterator it = list.iterator();
+      _skip(it, offset);
+      while (it.hasNext()) {
+        ActivityRef current = it.next();
+        // take care in the case, current.getActivityEntity() = null the same
+        // SpaceRef, need to remove it out
+        if (current.getActivityEntity() == null) {
+          current.getDay().getActivityRefs().remove(current.getName());
+          continue;
+        }
+        ExoSocialActivity activity = getStorage().getActivity(current.getActivityEntity().getId());
+        if (activity.isHidden() == true) {
+          continue;
+        }
+        got.add(activity);
+        if (++nb == limit) {
+          break;
+        }
+      }
+    } catch (NodeNotFoundException e) {
+      LOG.warn("Failed to activities!");
+    }
+    return got;
+  }
+  
   
   private int getNumberOfActivities(ActivityRefType type, Identity owner) {
     try {
@@ -754,16 +888,10 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     return builder.get().objects();
   }
   
-  private int getActivityRefs(IdentityEntity identityEntity, ActivityEntity activityEntity, ActivityRefType type) throws NodeNotFoundException {
-    QueryBuilder<ActivityRef> builder = getSession().createQueryBuilder(ActivityRef.class);
-
-    WhereExpression whereExpression = new WhereExpression();
+  private boolean hasActivityRefs(IdentityEntity identityEntity, ActivityEntity activityEntity, ActivityRefType type, long oldUpdated) throws NodeNotFoundException {
     ActivityRefListEntity refList = type.refsOf(identityEntity);
-    whereExpression.like(JCRProperties.path, refList.getPath() + "/%");
-    whereExpression.and().equals(ActivityRef.target, activityEntity.getId());
-
-    builder.where(whereExpression.toString());
-    return builder.get().objects().size();
+    ActivityRef ref = refList.get(oldUpdated);
+    return ref != null && ref.getActivityEntity().getId() == activityEntity.getId();
   }
   
   private QueryResult<ActivityRef> getActivityRefs(IdentityEntity identityEntity, ActivityRefType type, long offset, long limit) throws NodeNotFoundException {
@@ -862,9 +990,11 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
         
         
         ActivityRefListEntity listRef = type.refsOf(identityEntity);
+        //keep number
+        Integer oldNumberOfStream = listRef.getNumber();
         
         newYearMonthday.set(false);
-        ActivityRef ref = listRef.get(activityEntity, newYearMonthday);
+        ActivityRef ref = listRef.getOrCreated(activityEntity, newYearMonthday);
         
         //Take care the YearMonthDay path don't throw ADD_PROPERTY exception.
         if (newYearMonthday.get()) {
@@ -882,6 +1012,13 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
         }
 
         ref.setActivityEntity(activityEntity);
+        
+        Integer newNumberOfStream = listRef.getNumber();
+        //If activity is hidden, we must decrease the number of activity references
+        HidableEntity hidableActivity = _getMixin(activityEntity, HidableEntity.class, true);
+        if (hidableActivity.getHidden() && (newNumberOfStream > oldNumberOfStream)) {
+          ref.getDay().desc();
+        }
 
         //LOG.info("manageRefList()::AFTER");
         //printDebug(listRef, activityEntity.getLastUpdated());
@@ -899,6 +1036,40 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     }
   }
   
+  private void addRefList(IdentityEntity identityEntity,
+                          ActivityEntity activityEntity,
+                          ActivityRefType type,
+                          boolean mustCheck) throws NodeNotFoundException {
+
+    AtomicBoolean newYearMonthday = new AtomicBoolean(false);
+    //
+    if (mustCheck) {
+      // to avoid add back activity to given stream what has already existing
+      if (isExistingActivityRef(identityEntity, activityEntity))
+        return;
+    }
+
+    ActivityRefListEntity listRef = type.refsOf(identityEntity);
+
+    newYearMonthday.set(false);
+    ActivityRef ref = listRef.getOrCreated(activityEntity, newYearMonthday);
+
+    // Take care the YearMonthDay path don't throw ADD_PROPERTY exception.
+    if (newYearMonthday.get()) {
+      StorageUtils.persist();
+    }
+
+    if (ref.getName() == null) {
+      ref.setName(activityEntity.getName());
+    }
+
+    if (ref.getLastUpdated() == null) {
+      ref.setLastUpdated(activityEntity.getLastUpdated());
+    }
+
+    ref.setActivityEntity(activityEntity);
+  }
+  /**
   private void printDebug(ActivityRefListEntity list, long oldUpdated) {
     LOG.info("printDebug::OLD Date = " + oldUpdated);
     LOG.info("printDebug::SIZE = " + list.refs(oldUpdated).size());
@@ -909,7 +1080,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
       if (entry.getValue() != null && entry.getValue().getActivityEntity() != null )
       LOG.info(String.format("printDebug::KEY = %s| %s", entry.getKey(), entry.getValue().toString()));
     }
-  }
+  }*/
   
   @Override
   public void createFeedActivityRef(Identity owner,
@@ -967,7 +1138,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
 
         // migration 3.5.x => 4.x, lastUpdated of Activity is NULL, then use
         // createdDate for replacement
-        ActivityRef ref = listRef.get(activityEntity);
+        ActivityRef ref = listRef.getOrCreated(activityEntity);
         ref.setActivityEntity(activityEntity);
       }
       

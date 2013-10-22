@@ -579,8 +579,8 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       //
       if (mustInjectStreams) {
         Identity identity = identityStorage.findIdentityById(comment.getUserId());
-        StreamInvocationHelper.updateCommenter(identity, activity, commenters.toArray(new String[0]));
-        StreamInvocationHelper.update(activity, mentioners.toArray(new String[0]));
+        StreamInvocationHelper.updateCommenter(identity, activity, commenters.toArray(new String[0]), oldUpdated);
+        StreamInvocationHelper.update(activity, mentioners.toArray(new String[0]), oldUpdated);
       }
     }  
     catch (NodeNotFoundException e) {
@@ -857,7 +857,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
    * {@inheritDoc}
    */
   public int getNumberOfUserActivities(Identity owner) throws ActivityStorageException {
-    return getNumberOfUserActivitiesForUpgrade(owner);
+    return streamStorage.getNumberOfMyActivities(owner);
   }
 
   /**
@@ -974,7 +974,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
    * {@inheritDoc}
    */
   public int getNumberOfActivitesOnActivityFeed(Identity ownerIdentity) {
-    return getNumberOfActivitesOnActivityFeedForUpgrade(ownerIdentity);
+    return streamStorage.getNumberOfFeed(ownerIdentity);
   }
 
   @Override
@@ -1167,7 +1167,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
    * {@inheritDoc}
    */
   public int getNumberOfActivitiesOfConnections(Identity ownerIdentity) {
-    return getNumberOfActivitiesOfConnectionsForUpgrade(ownerIdentity);
+    return streamStorage.getNumberOfConnections(ownerIdentity);
   }
 
   /**
@@ -1295,7 +1295,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
    * {@inheritDoc}
    */
   public int getNumberOfUserSpacesActivities(Identity ownerIdentity) {
-    return getNumberOfUserSpacesActivitiesForUpgrade(ownerIdentity);
+    return streamStorage.getNumberOfMySpaces(ownerIdentity);
   }
 
   /**
@@ -1576,7 +1576,17 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       if (changedActivity.getTitle() == null) changedActivity.setTitle(activityEntity.getTitle());
       if (changedActivity.getBody() == null) changedActivity.setBody(activityEntity.getBody());
       
+      boolean isHidden = getActivity(changedActivity.getId()).isHidden();
       _saveActivity(changedActivity);
+      
+      //update activity ref when activity change value of isHidden
+      if (changedActivity.isHidden() != isHidden) {
+        Identity owner = identityStorage.findIdentity(SpaceIdentityProvider.NAME, changedActivity.getStreamOwner());
+        if (owner == null) {
+          owner = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, changedActivity.getStreamOwner());
+        }
+        StreamInvocationHelper.updateHidable(owner, changedActivity);
+      }
       
       getSession().save();
       
@@ -1712,7 +1722,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
 
   @Override
   public int getNumberOfSpaceActivities(Identity spaceIdentity) {
-    return getNumberOfSpaceActivitiesForUpgrade(spaceIdentity);
+    return streamStorage.getNumberOfSpaceStream(spaceIdentity);
   }
   
   @Override
