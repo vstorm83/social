@@ -225,7 +225,7 @@
                 </object-param>
                 <object-param>
                     <name>SuggestionsCache</name>
-                    <description></description>
+                    <description>The Cache configuration for the SuggestionsCache</description>
                     <object type="org.exoplatform.services.cache.ExoCacheConfig">
                         <field name="name"><string>SuggestionsCache</string></field>
                         <field name="maxSize"><int>${cache.exo.social.SuggestionsCache.Capacity:800}</int></field>
@@ -235,7 +235,7 @@
                 </object-param>
                 <object-param profiles="cluster">
                     <name>SuggestionsCache</name>
-                    <description></description>
+                    <description>The Cache configuration for the SuggestionsCache</description>
                     <object type="org.exoplatform.services.cache.impl.infinispan.generic.GenericExoCacheConfig">
                         <field name="name"><string>SuggestionsCache</string></field>
                         <field name="strategy"><string>LIRS</string></field>
