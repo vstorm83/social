@@ -92,11 +92,18 @@
     <key>org.exoplatform.social.core.storage.api.ActivityStorage</key>
     <type>org.exoplatform.social.core.storage.cache.CachedActivityStorage</type>
   </component>
-
+  
+  <component>
+    <key>org.exoplatform.social.core.storage.mongodb.ActivityMongoStorageImpl</key>
+    <type>org.exoplatform.social.core.storage.mongodb.ActivityMongoStorageImpl</type>
+  </component>
+  
+  <!--  
   <component>
     <key>org.exoplatform.social.core.storage.impl.ActivityStorageImpl</key>
     <type>org.exoplatform.social.core.storage.synchronization.SynchronizedActivityStorage</type>
   </component>
+  -->
 
   <!--
     Identity storage components.

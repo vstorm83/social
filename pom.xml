@@ -226,6 +226,12 @@
         <artifactId>pc-api</artifactId>
         <version>${org.gatein.pc.version}</version>
       </dependency>
+      <!-- defines MongoDB dependency -->
+      <dependency>
+        <groupId>org.mongodb</groupId>
+        <artifactId>mongo-java-driver</artifactId>
+        <version>2.11.1</version>
+      </dependency>
       <!-- To be replaced by an import of GateIn Portal parent POM -->
       <dependency>
         <groupId>org.gatein.portal</groupId>
