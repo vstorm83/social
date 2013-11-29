@@ -231,7 +231,7 @@ public class OrganizationIdentityProvider extends IdentityProvider<User> {
                                                         .findUserProfileByName(userName);
       //
       if(foundUserProfile == null) {
-        return;
+        foundUserProfile = organizationService.getUserProfileHandler().createUserProfileInstance(userName);
       }
 
       String uGender = foundUserProfile.getAttribute(UserProfile.PERSONAL_INFO_KEYS[4]);// "user.gender"
@@ -255,7 +255,7 @@ public class OrganizationIdentityProvider extends IdentityProvider<User> {
       
       //
       if(foundUserProfile == null) {
-        return;
+        foundUserProfile = organizationService.getUserProfileHandler().createUserProfileInstance(userName);
       }
       
       String uPosition = foundUserProfile.getAttribute(UserProfile.PERSONAL_INFO_KEYS[7]);//user.jobtitle
