@@ -213,7 +213,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getUserActivities(owner, offset, limit);
+            List<ExoSocialActivity> got = mongoStorage.getUserActivities(owner, offset, limit);
             return buildIds(got);
           }
         },
@@ -233,7 +233,7 @@ public class CachedActivityStorage implements ActivityStorage {
     mongoStorage.saveComment(activity, comment);
 
     //
-    exoActivityCache.put(new ActivityKey(comment.getId()), new ActivityData(getActivity(comment.getId())));
+    exoActivityCache.put(new ActivityKey(comment.getId()), new ActivityData(getComment(comment.getId())));
     ActivityKey activityKey = new ActivityKey(activity.getId());
     exoActivityCache.remove(activityKey);
     exoActivityCache.put(activityKey, new ActivityData(getActivity(activity.getId())));
@@ -596,7 +596,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivitiesOfConnections(ownerIdentity, offset, limit);
+            List<ExoSocialActivity> got = mongoStorage.getActivitiesOfConnections(ownerIdentity, offset, limit);
             return buildIds(got);
           }
         },
@@ -1062,7 +1062,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfSpaceActivities(spaceIdentity));
+            return new IntegerData(mongoStorage.getNumberOfSpaceActivities(spaceIdentity));
           }
         },
         key)
@@ -1101,7 +1101,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getSpaceActivities(ownerIdentity, offset, limit);
+            List<ExoSocialActivity> got = mongoStorage.getSpaceActivities(ownerIdentity, offset, limit);
             return buildIds(got);
           }
         },
@@ -1806,6 +1806,33 @@ public class CachedActivityStorage implements ActivityStorage {
   public void setInjectStreams(boolean mustInject) {
     storage.setInjectStreams(mustInject);
     
+  }
+
+  public ExoSocialActivity getComment(final String commentId) throws ActivityStorageException {
+    //
+    ActivityKey key = new ActivityKey(commentId);
+
+    //
+    ActivityData activity = activityCache.get(
+        new ServiceContext<ActivityData>() {
+          public ActivityData execute() {
+            try {
+              ExoSocialActivity got = mongoStorage.getComment(commentId);
+              if (got != null) {
+                return new ActivityData(got);
+              }
+              else {
+                return ActivityData.NULL;
+              }
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          }
+        },
+        key);
+
+    //
+    return activity.build();
   }
   
 }

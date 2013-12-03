@@ -37,7 +37,6 @@ import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.core.storage.ActivityStorageException;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
-import org.exoplatform.social.core.storage.mongodb.ActivityMongoStorageImpl;
 
 /**
  * Class ActivityManagerImpl implements ActivityManager without caching.
@@ -54,8 +53,6 @@ public class ActivityManagerImpl implements ActivityManager {
   /** The activityStorage. */
   protected ActivityStorage activityStorage;
   
-  protected ActivityMongoStorageImpl mongoStorage;
-
   /** identityManager to get identity for saving and getting activities */
   protected IdentityManager              identityManager;
 
@@ -73,10 +70,9 @@ public class ActivityManagerImpl implements ActivityManager {
    * @param activityStorage
    * @param identityManager
    */
-  public ActivityManagerImpl(ActivityStorage activityStorage, IdentityManager identityManager, ActivityMongoStorageImpl mongoStorage) {
+  public ActivityManagerImpl(ActivityStorage activityStorage, IdentityManager identityManager) {
     this.activityStorage = activityStorage;
     this.identityManager = identityManager;
-    this.mongoStorage = mongoStorage;
   }
 
   /**
@@ -145,7 +141,7 @@ public class ActivityManagerImpl implements ActivityManager {
    */
   public void saveComment(ExoSocialActivity existingActivity, ExoSocialActivity newComment) throws
           ActivityStorageException {
-    mongoStorage.saveComment(existingActivity, newComment);
+    activityStorage.saveComment(existingActivity, newComment);
   }
 
   /**
@@ -281,7 +277,7 @@ public class ActivityManagerImpl implements ActivityManager {
    * {@inheritDoc}
    */
   public ExoSocialActivity saveActivity(Identity streamOwner, ExoSocialActivity newActivity) {
-    return mongoStorage.saveActivity(streamOwner, newActivity);
+    return activityStorage.saveActivity(streamOwner, newActivity);
   }
 
   /**
