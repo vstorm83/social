@@ -1,7 +1,6 @@
 package org.exoplatform.social.core.storage.mongodb;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -11,14 +10,15 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.jcr.InvalidItemStateException;
-import javax.jcr.ItemExistsException;
+import javax.jcr.RepositoryException;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.Validate;
 import org.bson.types.BasicBSONList;
 import org.bson.types.ObjectId;
-import org.chromattic.api.ChromatticException;
+import org.exoplatform.container.ExoContainerContext;
+import org.exoplatform.services.jcr.RepositoryService;
+import org.exoplatform.services.jcr.config.RepositoryConfigurationException;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.ActivityProcessor;
@@ -29,15 +29,14 @@ import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
-import org.exoplatform.social.core.chromattic.entity.HidableEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.mongo.entity.ActivityMongoEntity;
-import org.exoplatform.social.core.mongo.entity.CommentMongoEntity;
 import org.exoplatform.social.core.mongo.entity.ActivityRefMongoEntity;
 import org.exoplatform.social.core.mongo.entity.ActivityRefMongoEntity.ViewerType;
+import org.exoplatform.social.core.mongo.entity.CommentMongoEntity;
 import org.exoplatform.social.core.service.LinkProvider;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.ActivityStorageException;
@@ -49,16 +48,101 @@ import org.exoplatform.social.core.storage.api.SpaceStorage;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 import org.exoplatform.social.core.storage.impl.ActivityBuilderWhere;
 import org.exoplatform.social.core.storage.impl.StorageUtils;
-import org.exoplatform.social.core.storage.streams.StreamInvocationHelper;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 import com.mongodb.MongoException;
 import com.mongodb.WriteResult;
 
 public class ActivityMongoStorageImpl extends AbstractMongoStorage implements ActivityStorage {
+  
+  /**
+   * Defines the collection name with tenant name
+   * @author thanhvc
+   *
+   */
+  enum CollectionName {
+    
+    ACTIVITY_COLLECTION("activity"),
+    COMMENT_COLLECTION("comment"),
+    STREAM_ITEM_COLLECTION("streamItem");
+    
+    private final String collectionName;
+    
+    private CollectionName(String name) {
+      this.collectionName = name;
+    }
+    
+    private static String getRepositoryName() throws RepositoryException, RepositoryConfigurationException {
+      RepositoryService service = (RepositoryService) ExoContainerContext.getCurrentContainer().getComponentInstanceOfType(RepositoryService.class);
+      
+        String repositoryName = service.getCurrentRepository().getConfiguration().getName();
+        if (repositoryName == null || repositoryName.length() <= 0) {
+          repositoryName = service.getDefaultRepository().getConfiguration().getName();
+        }
+        
+        return repositoryName;
+    }
+    
+    /**
+     * Gets the collection name with tenant name
+     * @return
+     */
+    public String collectionName() {
+      try {
+        return getRepositoryName() + "-" + this.collectionName;
+      } catch(RepositoryException e) {
+        throw new RuntimeException();
+      } catch(RepositoryConfigurationException e) {
+        throw new RuntimeException();
+      }
+      
+    }
+  }
+  
+  enum StreamViewType {
+    LIKER() {
+      @Override
+      protected BasicDBObject append(BasicDBObject entity) {
+        entity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.LIKER.name());
+        return entity;
+      }
+    },
+    CONNECTION() {
+      @Override
+      protected BasicDBObject append(BasicDBObject entity) {
+        entity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.CONNECTION.name());
+        return entity;
+      }
+    },
+    COMMENTER() {
+      @Override
+      protected BasicDBObject append(BasicDBObject entity) {
+        entity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.COMMENTER.name());
+        return entity;
+      }
+    },
+    MENTIONER() {
+      @Override
+      protected BasicDBObject append(BasicDBObject entity) {
+        entity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.MENTIONER.name());
+        return entity;
+      }
+    },
+    POSTER() {
+      @Override
+      protected BasicDBObject append(BasicDBObject entity) {
+        entity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.POSTER.name());
+        return entity;
+      }
+    };
+    
+    private StreamViewType() {
+    }
+    
+    protected abstract BasicDBObject append(BasicDBObject entity);
+  }
   
   /** .. */
   private static final Log LOG = ExoLogger.getLogger(ActivityMongoStorageImpl.class);
@@ -67,18 +151,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   /** .. */
   public static final Pattern USER_NAME_VALIDATOR_REGEX = Pattern.compile("^[\\p{L}][\\p{L}._\\-\\d]+$");
   /** .. */
-  private static final String ACTIVITY_COLLECTION_NAME = "activity";
-  /** .. */
-  private static final String COMMENT_COLLECTION_NAME = "comment";
-  /** .. */
-  private static final String ALL_STREAM_COLLECTION_NAME = "all";
-  /** .. */
-  private static final String CONNECTION_STREAM_COLLECTION_NAME = "connection";
-  /** .. */
-  private static final String OWNER_STREAM_COLLECTION_NAME = "owner";
-  /** .. */
-  private static final String SPACE_STREAM_COLLECTION_NAME = "space";
-  
   private ActivityStorage activityStorage;
 
   private final SortedSet<ActivityProcessor> activityProcessors;
@@ -125,7 +197,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 	@Override
   public ExoSocialActivity getActivity(String activityId) throws ActivityStorageException {
 	  //
-    DBCollection collection = getCollection(ACTIVITY_COLLECTION_NAME);
+    DBCollection collection = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     BasicDBObject query = new BasicDBObject();
     query.append("_id", new ObjectId(activityId));
     
@@ -162,12 +234,11 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   }
 
 	@Override
-	public void saveComment(ExoSocialActivity activity,
-			ExoSocialActivity comment) throws ActivityStorageException {
+  public void saveComment(ExoSocialActivity activity, ExoSocialActivity comment) throws ActivityStorageException {
 		
 	  try {
 	    //
-	    DBCollection commentColl = getCollection(COMMENT_COLLECTION_NAME);
+	    DBCollection commentColl = getCollection(CollectionName.COMMENT_COLLECTION.collectionName());
 	    
       //
       long currentMillis = System.currentTimeMillis();
@@ -192,12 +263,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
       commentColl.insert(commentEntity);
       
       comment.setId(commentEntity.getString("_id") != null ? commentEntity.getString("_id") : null);
-      //
-//      if (mustInjectStreams) {
-//        Identity identity = identityStorage.findIdentityById(comment.getUserId());
-//        StreamInvocationHelper.updateCommenter(identity, activity, commenters.toArray(new String[0]), oldUpdated);
-//        StreamInvocationHelper.update(activity, mentioners.toArray(new String[0]), oldUpdated);
-//      }
+
     } catch (MongoException ex) {
       throw new ActivityStorageException(ActivityStorageException.Type.FAILED_TO_SAVE_COMMENT, ex.getMessage());
     }
@@ -212,7 +278,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 	}
 	
 	private void updateActivityRef(String activityId, long time, long oldTime) {
-	  DBCollection activityColl = getCollection(ACTIVITY_COLLECTION_NAME);
+	  DBCollection activityColl = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     BasicDBObject update = new BasicDBObject();
     BasicDBObject set = new BasicDBObject();
     set.append(ActivityMongoEntity.lastUpdated.getName(), time);
@@ -222,26 +288,16 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     query.put(ActivityMongoEntity.id.getName(), new ObjectId(activityId));
     
     WriteResult result = activityColl.update(query, update);
-    LOG.warn("==============>UPDATED ACTIVITY REF: "+result.toString());
-    
+    LOG.debug("UPDATED ACTIVITY REF: " + result.toString());
     //update refs
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
-    DBCollection connectionColl = getCollection(CONNECTION_STREAM_COLLECTION_NAME);
-    DBCollection ownerColl = getCollection(OWNER_STREAM_COLLECTION_NAME);
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
     query = new BasicDBObject();
     query.put(ActivityRefMongoEntity.activityId.getName(), activityId);
     set = new BasicDBObject();
     set.append(ActivityRefMongoEntity.time.getName(), time);
     update = new BasicDBObject("$set", set);
-    
-    result = feedColl.update(query, update);
-    LOG.warn("==============>UPDATED ACTIVITY Reference for FEED: "+result.toString());
-    
-    result = connectionColl.update(query, update);
-    LOG.warn("==============>UPDATED ACTIVITY Reference for Connection: "+result.toString());
-    
-    result = ownerColl.update(query, update);
-    LOG.warn("==============>UPDATED ACTIVITY Reference for OWNER: "+result.toString());
+    result = streamCol.update(query, update);
+    LOG.debug("UPDATED ACTIVITY Reference for FEED: " + result.toString());
 	}
 	
 	@Override
@@ -274,16 +330,13 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     //
     String[] removedLikes = StorageUtils.sub(activityEntity.getLikes(), activity.getLikeIdentityIds());
     String[] addedLikes = StorageUtils.sub(activity.getLikeIdentityIds(), activityEntity.getLikes());
-    //Don't update the last modified for activity.
-    //Don't apply What's hot for like/dislike case.
     
+    //TODO LIKER case
     if (removedLikes.length > 0 || addedLikes.length > 0) {
-      //process likes activity
       //manageActivityLikes(addedLikes, removedLikes, activity);
     }
     //
     //fillActivityEntityFromActivity(activity, activityEntity);
-    
   }
 	
 	/*
@@ -414,94 +467,96 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 	/*
    * Internal
    */
-  protected String[] _createActivity(Identity owner, ExoSocialActivity activity) throws MongoException, NodeNotFoundException {
+  protected String[] _createActivity(Identity poster, ExoSocialActivity activity) throws MongoException, NodeNotFoundException {
     //
-    DBCollection collection = getCollection(ACTIVITY_COLLECTION_NAME);
+    DBCollection collection = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     
     BasicDBObject activityEntity = new BasicDBObject();
-    fillActivityEntityFromActivity(owner, activity, activityEntity, true);
+    fillActivityEntityFromActivity(poster, activity, activityEntity, true);
     //
     collection.insert(activityEntity);
     activity.setId(activityEntity.getString("_id") != null ? activityEntity.getString("_id") : null);
     
-    LOG.warn("==========> ACTIVITY ID:"+ activity.getId());
+    LOG.debug("ACTIVITY ID: " + activity.getId());
     
     //fill streams
-    createStreamItems(owner, activity);
+    newStreamItemForNewActivity(poster, activity);
     
     return activity.getMentionedIds();
   }
   
-  private void createStreamItems(Identity owner, ExoSocialActivity activity) {
+  private void newStreamItemForNewActivity(Identity poster, ExoSocialActivity activity) {
     //create StreamItem
-    if (OrganizationIdentityProvider.NAME.equals(owner.getProviderId())) {
+    if (OrganizationIdentityProvider.NAME.equals(poster.getProviderId())) {
       //poster
-      createStreamItemForPoster(owner, activity);
+      poster(poster, activity);
       //connection
-      createStreamItemForConnections(owner, activity);
+      connection(poster, activity);
       //mention
-      createStreamItemForMentioner(owner, activity);
+      mention(poster, activity);
     } else {
       //for SPACE
 
     }
   }
   
-  private void createStreamItemForPoster(Identity owner, ExoSocialActivity activity) throws MongoException {
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
-    DBCollection ownerColl = getCollection(OWNER_STREAM_COLLECTION_NAME);
+  private void poster(Identity poster, ExoSocialActivity activity) throws MongoException {
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
     //poster
-    BasicDBObject streamItem = new BasicDBObject();
-    fillStreamItem(owner, activity, streamItem);
-    streamItem.append(ActivityRefMongoEntity.viewerId.getName(), owner.getId());
-    streamItem.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
-    feedColl.insert(streamItem);
-    
-    //
-    streamItem = new BasicDBObject();
-    fillStreamItem(owner, activity, streamItem);
-    streamItem.append(ActivityRefMongoEntity.viewerId.getName(), owner.getId());
-    streamItem.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
-    ownerColl.insert(streamItem);
+    BasicDBObject entity = new BasicDBObject();
+    fillStreamItem(poster, activity, entity);
+    entity = StreamViewType.POSTER.append(entity);
+    entity.append(ActivityRefMongoEntity.viewerId.getName(), poster.getId());
+    entity.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
+    streamCol.insert(entity);
   }
-  
-  private void createStreamItemForMentioner(Identity owner, ExoSocialActivity activity) throws MongoException {
-    DBCollection ownerColl = getCollection(OWNER_STREAM_COLLECTION_NAME);
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
+  /**
+   * Creates StreamItem for each user who has mentioned on the activity
+   * @param poster
+   * @param activity
+   * @throws MongoException
+   */
+  private void mention(Identity poster, ExoSocialActivity activity) throws MongoException {
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
     //
     for (String mentioner : activity.getMentionedIds()) {
-      BasicDBObject mentionerStreamItem = new BasicDBObject();
-      fillStreamItem(owner, activity, mentionerStreamItem);
-      mentionerStreamItem.append(ActivityRefMongoEntity.viewerId.getName(), mentioner);
-      mentionerStreamItem.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.MENTIONER.name());
-      mentionerStreamItem.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
-      ownerColl.insert(mentionerStreamItem);
-      feedColl.insert(mentionerStreamItem);
+      BasicDBObject entity = new BasicDBObject();
+      fillStreamItem(poster, activity, entity);
+      entity.append(ActivityRefMongoEntity.viewerId.getName(), mentioner);
+      entity = StreamViewType.MENTIONER.append(entity);
+      entity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.MENTIONER.name());
+      entity.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
+      streamCol.insert(entity);
     }
   }
-  
-  private void createStreamItemForConnections(Identity owner, ExoSocialActivity activity) throws MongoException {
-    List<Identity> relationships = relationshipStorage.getConnections(owner);
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
-    DBCollection connColl = getCollection(CONNECTION_STREAM_COLLECTION_NAME);
+  /**
+   * Creates StreamItem for each user who has connected to poster
+   * @param poster
+   * @param activity
+   * @throws MongoException
+   */
+  private void connection(Identity poster, ExoSocialActivity activity) throws MongoException {
+    List<Identity> relationships = relationshipStorage.getConnections(poster);
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
     //
     for (Identity identity : relationships) {
-      BasicDBObject streamItemEntity = new BasicDBObject();
-      fillStreamItem(owner, activity, streamItemEntity);
-      streamItemEntity.append(ActivityRefMongoEntity.viewerTypes.getName(), ViewerType.CONNECTION.name());
-      streamItemEntity.append(ActivityRefMongoEntity.viewerId.getName(), identity.getId());
-      streamItemEntity.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
+      BasicDBObject entity = new BasicDBObject();
+      fillStreamItem(poster, activity, entity);
       //
-      connColl.insert(streamItemEntity);
-      feedColl.insert(streamItemEntity);
+      StreamViewType.CONNECTION.append(entity);
+      //
+      entity.append(ActivityRefMongoEntity.viewerId.getName(), identity.getId());
+      entity.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
+      //
+      streamCol.insert(entity);
     }
   }
   
-  private void fillStreamItem(Identity owner, ExoSocialActivity activity, BasicDBObject streamItemEntity) {
+  private void fillStreamItem(Identity poster, ExoSocialActivity activity, BasicDBObject streamItemEntity) {
     //
     streamItemEntity.append(ActivityRefMongoEntity.activityId.getName(), activity.getId());
-    streamItemEntity.append(ActivityRefMongoEntity.owner.getName(), owner.getId());
-    streamItemEntity.append(ActivityRefMongoEntity.poster.getName(), activity.getUserId() != null ? activity.getUserId() : owner.getId());
+    streamItemEntity.append(ActivityRefMongoEntity.owner.getName(), poster.getId());
+    streamItemEntity.append(ActivityRefMongoEntity.poster.getName(), activity.getUserId() != null ? activity.getUserId() : poster.getId());
     streamItemEntity.append(ActivityRefMongoEntity.hiable.getName(), activity.isHidden());
     streamItemEntity.append(ActivityRefMongoEntity.lockable.getName(), activity.isLocked());
   }
@@ -583,29 +638,22 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   @Override
   public void deleteActivity(String activityId) throws ActivityStorageException {
     //
-    DBCollection collection = getCollection(ACTIVITY_COLLECTION_NAME);
+    DBCollection collection = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     BasicDBObject query = new BasicDBObject();
     query.append("_id", new ObjectId(activityId));
     
     WriteResult result = collection.remove(query);
-    LOG.warn("==========>DELETED: "+result);
+    LOG.debug("DELETED: " + result);
     deleteActivityRef(activityId);
   }
   
   private void deleteActivityRef(String activityId) {
-    //
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
-    DBCollection connColl = getCollection(CONNECTION_STREAM_COLLECTION_NAME);
-    DBCollection ownerColl = getCollection(OWNER_STREAM_COLLECTION_NAME);
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
     BasicDBObject query = new BasicDBObject();
     query.append(ActivityRefMongoEntity.activityId.getName(), activityId);
     
-    WriteResult result = feedColl.remove(query);
-    LOG.warn("==========>FEED REF DELETED: "+result);
-    result = connColl.remove(query);
-    LOG.warn("==========>CONNECTION REF DELETED: "+result);
-    result = ownerColl.remove(query);
-    LOG.warn("==========>OWNER REF DELETED: "+result);
+    WriteResult result = streamCol.remove(query);
+    LOG.debug("REF DELETED: " + result);
   }
 
   @Override
@@ -642,7 +690,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 	@Override
 	public int getNumberOfNewerOnUserActivities(Identity ownerIdentity,
 			ExoSocialActivity baseActivity) {
-		// TODO Auto-generated method stub
 		return 0;
 	}
 
@@ -667,17 +714,17 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   @Override
   public List<ExoSocialActivity> getActivityFeed(Identity ownerIdentity, int offset, int limit) {
     //
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
-    DBCollection activityColl = getCollection(ACTIVITY_COLLECTION_NAME);
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
+    DBCollection activityCol = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), ownerIdentity.getId());
     BasicDBObject sortObj = new BasicDBObject("time", -1);
 
-    DBCursor cur = feedColl.find(query).sort(sortObj).skip(offset).limit(limit);
+    DBCursor cur = streamCol.find(query).sort(sortObj).skip(offset).limit(limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
+      BasicDBObject entity = (BasicDBObject) activityCol.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
       ExoSocialActivity activity = new ExoSocialActivityImpl();
       fillActivity(activity, entity);
       result.add(activity);
@@ -695,9 +742,9 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 
   @Override
   public int getNumberOfActivitesOnActivityFeed(Identity ownerIdentity) {
-    //
-    DBCollection feedColl = getCollection(ALL_STREAM_COLLECTION_NAME);
-    return feedColl.find().size();
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
+    //TODO lack of filer for feed stream
+    return streamCol.find().size();
   }
 
   @Override
@@ -734,11 +781,11 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
                                                             int offset,
                                                             int limit) {
     //
-    DBCollection connectionColl = getCollection(CONNECTION_STREAM_COLLECTION_NAME);
-    DBCollection activityColl = getCollection(ACTIVITY_COLLECTION_NAME);
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
+    DBCollection activityColl = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     BasicDBObject sortObj = new BasicDBObject("time", -1);
 
-    DBCursor cur = connectionColl.find().sort(sortObj).skip(offset).limit(limit);
+    DBCursor cur = streamCol.find().sort(sortObj).skip(offset).limit(limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
@@ -856,7 +903,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   public List<ExoSocialActivity> getComments(ExoSocialActivity existingActivity,
                                              int offset,
                                              int limit) {
-    DBCollection activityColl = getCollection(COMMENT_COLLECTION_NAME);
+    DBCollection activityColl = getCollection(CollectionName.COMMENT_COLLECTION.collectionName());
     BasicDBObject query = new BasicDBObject(CommentMongoEntity.activityId.getName(), existingActivity.getId());
 
     DBCursor cur = activityColl.find(query);
@@ -909,10 +956,9 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 	}
 
 	@Override
-	public void updateActivity(ExoSocialActivity existingActivity)
-			throws ActivityStorageException {
+  public void updateActivity(ExoSocialActivity existingActivity) throws ActivityStorageException {
 	  //
-    DBCollection collection = getCollection(ACTIVITY_COLLECTION_NAME);
+    DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
     
     BasicDBObject update = new BasicDBObject();
     
@@ -924,20 +970,19 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     BasicDBObject query = new BasicDBObject();
     query.put(ActivityMongoEntity.id.getName(), new ObjectId(existingActivity.getId()));
     
-    WriteResult result = collection.update(query, update);
-    LOG.warn("==============>UPDATED ACTIVITY: "+result.toString());
+    WriteResult result = streamCol.update(query, update);
+    LOG.debug("==============>UPDATED ACTIVITY: " + result.toString());
     
     //
     long currentMillis = System.currentTimeMillis();
     long oldTime = existingActivity.getPostedTime();
-    LOG.warn("==============>UPDATED ACTIVITY REF [TIME]: "+ currentMillis);
+    LOG.debug("==============>UPDATED ACTIVITY REF [TIME]: " + currentMillis);
     updateActivityRef(existingActivity.getId(), currentMillis, oldTime);
     
 	}
 
 	@Override
-	public int getNumberOfNewerOnActivityFeed(Identity ownerIdentity,
-			Long sinceTime) {
+  public int getNumberOfNewerOnActivityFeed(Identity ownerIdentity, Long sinceTime) {
 		return 0;
 	}
 

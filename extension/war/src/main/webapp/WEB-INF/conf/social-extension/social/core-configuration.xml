@@ -110,7 +110,7 @@
         <value-param>
           <name>port</name>
           <description>Port of MongoDB</description>
-          <value>27018</value>
+          <value>27017</value>
         </value-param>
     </init-params>
   </component>
