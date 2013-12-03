@@ -58,6 +58,7 @@ import org.exoplatform.social.core.activity.model.ActivityStream;
 import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
+import org.exoplatform.social.core.application.RelationshipPublisher;
 import org.exoplatform.social.core.chromattic.entity.ActivityDayEntity;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
 import org.exoplatform.social.core.chromattic.entity.ActivityListEntity;
@@ -68,6 +69,7 @@ import org.exoplatform.social.core.chromattic.entity.LockableEntity;
 import org.exoplatform.social.core.chromattic.filter.JCRFilterLiteral;
 import org.exoplatform.social.core.chromattic.utils.ActivityList;
 import org.exoplatform.social.core.identity.model.Identity;
+import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.relationship.model.Relationship;
@@ -634,6 +636,10 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       if (activity.getId() == null) {
 
         String[] mentioners = _createActivity(owner, activity);
+        if (RelationshipPublisher.USER_ACTIVITIES_FOR_RELATIONSHIP.equals(activity.getType()))
+          identityStorage.updateProfileActivityId(owner, activity.getId(), Profile.AttachedActivityType.RELATIONSHIP);
+
+        StorageUtils.persist();
         //create refs
         //streamStorage.save(owner, activity);
         if (mustInjectStreams) {
@@ -2416,6 +2422,9 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
                                                long limit) throws ActivityStorageException {
     List<ExoSocialActivity> got = new ArrayList<ExoSocialActivity>();
     StringBuilder query = new StringBuilder().append("SELECT * FROM soc:activity WHERE ").append(getQueryViewerActivityStream(owner, viewer));
+    query.append(" ORDER BY ").append(ActivityEntity.lastUpdated.getName()).append(" DESC");
+    query.append(", ").append(ActivityEntity.postedTime.getName()).append(" DESC");
+    
     NodeIterator it = nodes(query.toString());
     while (it.hasNext() && limit > 0) {
       if (offset > 0) {
