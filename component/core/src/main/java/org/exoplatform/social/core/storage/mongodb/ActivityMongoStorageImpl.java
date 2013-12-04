@@ -38,6 +38,8 @@ import org.exoplatform.social.core.mongo.entity.ActivityMongoEntity;
 import org.exoplatform.social.core.mongo.entity.ActivityRefMongoEntity;
 import org.exoplatform.social.core.mongo.entity.ActivityRefMongoEntity.ViewerType;
 import org.exoplatform.social.core.mongo.entity.CommentMongoEntity;
+import org.exoplatform.social.core.relationship.model.Relationship;
+import org.exoplatform.social.core.relationship.model.Relationship.Type;
 import org.exoplatform.social.core.service.LinkProvider;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.ActivityStorageException;
@@ -286,8 +288,59 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
                                                Identity viewer,
                                                long offset,
                                                long limit) throws ActivityStorageException {
-    return null;
+    
+    //
+    DBCollection connectionColl = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
+    DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
+    
+    String[] identityIds = getIdentities(owner, viewer);
+    
+    String[] viewTypes = new String[]{ViewerType.COMMENTER.name(), ViewerType.LIKER.name(), ViewerType.MENTIONER.name(), ViewerType.POSTER.name()};
+    BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), new BasicDBObject("$in", identityIds));
+    query.append(ActivityRefMongoEntity.viewerTypes.getName(), new BasicDBObject("$in", viewTypes));
+    
+    BasicDBObject sortObj = new BasicDBObject("time", -1);
+
+    DBCursor cur = connectionColl.find(query).sort(sortObj).skip((int)offset).limit((int)limit);
+    List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
+    while (cur.hasNext()) {
+      BasicDBObject row = (BasicDBObject) cur.next();
+      String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
+      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
+      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      fillActivity(activity, entity);
+      result.add(activity);
+    }
+    LOG.debug("getActivities size = "+ result.size());
+    
+    return result;
   }
+  
+  private String[] getIdentities(Identity owner, Identity viewer) {
+    List<String> posterIdentities = new ArrayList<String>();
+    posterIdentities.add(owner.getId());
+    
+    //
+    if (viewer != null && owner.getId().equals(viewer.getId()) == false) {
+      //
+      Relationship rel = relationshipStorage.getRelationship(owner, viewer);
+      
+      //
+      boolean hasRelationship = false;
+      if (rel != null && rel.getStatus() == Type.CONFIRMED) {
+        hasRelationship = true;
+      }
+      
+      //
+      if (hasRelationship) {
+        posterIdentities.add(viewer.getId());
+      }
+    }
+    
+    //
+    return posterIdentities.toArray(new String[0]);
+  }
+
 
 	@Override
   public void saveComment(ExoSocialActivity activity, ExoSocialActivity comment) throws ActivityStorageException {
@@ -1175,7 +1228,11 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 
   @Override
   public int getNumberOfActivitiesByPoster(Identity ownerIdentity, Identity viewerIdentity) {
-    return 0;
+    //
+    DBCollection connectionColl = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
+    String[] identityIds = getIdentities(ownerIdentity, viewerIdentity);
+    BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), new BasicDBObject("$in", identityIds));
+    return connectionColl.find(query).size();
   }
 
   @Override

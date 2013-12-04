@@ -1186,7 +1186,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfActivitiesByPoster(posterIdentity));
+            return new IntegerData(mongoStorage.getNumberOfActivitiesByPoster(posterIdentity));
           }
         },
         key)
@@ -1195,15 +1195,11 @@ public class CachedActivityStorage implements ActivityStorage {
   
   @Override
   public int getNumberOfActivitiesByPoster(final Identity ownerIdentity, final Identity viewerIdentity) {
-    //
-    ActivityCountKey key =
-        new ActivityCountKey(new IdentityKey(ownerIdentity), new IdentityKey(viewerIdentity), ActivityType.POSTER);
-
-    //
+    ActivityCountKey key = new ActivityCountKey(new IdentityKey(ownerIdentity), new IdentityKey(viewerIdentity), ActivityType.POSTER);
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfActivitiesByPoster(ownerIdentity, viewerIdentity));
+            return new IntegerData(mongoStorage.getNumberOfActivitiesByPoster(ownerIdentity, viewerIdentity));
           }
         },
         key)
@@ -1420,7 +1416,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivities(owner, viewer, offset, limit);
+            List<ExoSocialActivity> got = mongoStorage.getActivities(owner, viewer, offset, limit);
             return buildIds(got);
           }
         },
