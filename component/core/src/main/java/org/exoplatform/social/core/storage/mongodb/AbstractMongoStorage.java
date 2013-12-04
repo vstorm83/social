@@ -1,5 +1,7 @@
 package org.exoplatform.social.core.storage.mongodb;
 
+import java.util.Set;
+
 import org.exoplatform.social.core.storage.impl.AbstractStorage;
 
 import com.mongodb.DBCollection;
@@ -29,6 +31,14 @@ public abstract class AbstractMongoStorage extends AbstractStorage {
    */
   public MongoStorage getMongoStorage() {
     return this.storage;
+  }
+  
+  /**
+   * Gets list of collections on specified DB
+   * @return
+   */
+  protected Set<String> getCollections() {
+    return storage.getDB().getCollectionNames();
   }
 
 }
