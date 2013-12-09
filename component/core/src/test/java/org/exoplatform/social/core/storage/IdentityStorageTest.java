@@ -101,7 +101,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#saveIdentity(Identity)}
    *
    */
-  @MaxQueryNumber(130)
+  @MaxQueryNumber(186)
   public void testSaveIdentity() {
     Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, "identity1");
     identityStorage.saveIdentity(tobeSavedIdentity);
@@ -125,7 +125,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#deleteIdentity(Identity)}
    *
    */
-  @MaxQueryNumber(538)
+  @MaxQueryNumber(807)
   public void testDeleteIdentity() {
     final String username = "username";
     Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, username);
@@ -163,7 +163,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentityById(String)}
    *
    */
-  @MaxQueryNumber(50)
+  @MaxQueryNumber(72)
   public void testFindIdentityById() {
     final String remoteUser = "identity1";
     Identity toSaveIdentity = new Identity(OrganizationIdentityProvider.NAME, remoteUser);
@@ -196,7 +196,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentity(String, String)}
    *
    */
-  @MaxQueryNumber(50)
+  @MaxQueryNumber(72)
   public void testFindIdentity() {
     final String userName = "username";
 
@@ -216,7 +216,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#saveProfile(Profile)}
    *
    */
-  @MaxQueryNumber(100)
+  @MaxQueryNumber(108)
   public void testSaveProfile() {
     final String userName = "username";
     final String firstName = "FirstName";
@@ -247,7 +247,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#loadProfile(Profile)}
    *
    */
-  @MaxQueryNumber(150)
+  @MaxQueryNumber(210)
   public void testLoadProfile() throws Exception {
     final String username = "username";
     Identity tobeSavedIdentity = new Identity(OrganizationIdentityProvider.NAME, username);
@@ -292,7 +292,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     tearDownIdentityList.add(identityStorage.findIdentity(OrganizationIdentityProvider.NAME, username));
   }
 
-  @MaxQueryNumber(70)
+  @MaxQueryNumber(99)
   public void testLoadProfileByReloadCreatedProfileNode() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -322,7 +322,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     tearDownIdentityList.add(identityStorage.findIdentity(OrganizationIdentityProvider.NAME, remoteId));
   }
 
-  @MaxQueryNumber(100)
+  @MaxQueryNumber(108)
   public void testFindIdentityByExistName() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -343,7 +343,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     assertEquals(1, result.size());
   }
 
-  @MaxQueryNumber(730)
+  @MaxQueryNumber(1080)
   public void testFindManyIdentitiesByExistName() throws Exception {
     final String providerId = "organization";
 
@@ -368,7 +368,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
     assertEquals(total, result.size());
   }
 
-  @MaxQueryNumber(70)
+  @MaxQueryNumber(99)
   public void testFindIdentityByNotExistName() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -393,7 +393,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#getIdentitiesByProfileFilter(String, ProfileFilter, int, int, boolean)}
    *
    */
-  @MaxQueryNumber(400)
+  @MaxQueryNumber(582)
   public void testFindIdentityByProfileFilter() throws Exception {
     String providerId = "organization";
     String remoteId = "username";
@@ -441,7 +441,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#getIdentitiesByProfileFilter(String, ProfileFilter, int, int, boolean)}
    *
    */
-  @MaxQueryNumber(760)
+  @MaxQueryNumber(1140)
   public void testFindManyIdentitiesByProfileFilter() throws Exception {
     String providerId = "organization";
 
@@ -477,7 +477,6 @@ public class IdentityStorageTest extends AbstractCoreTest {
   @MaxQueryNumber(1200)
   public void testGetIdentitiesByFirstCharacterOfNameCount() throws Exception {
     populateData();
-    
     final ProfileFilter filter = new ProfileFilter();
     filter.setFirstCharacterOfName('F');
     int idsCount = identityStorage.getIdentitiesByFirstCharacterOfNameCount("organization", filter);
@@ -493,8 +492,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    */
   @MaxQueryNumber(1100)
   public void testGetIdentitiesByFirstCharacterOfName() throws Exception {
-    populateData();
-    
+    populateData();    
     final ProfileFilter filter = new ProfileFilter();
     filter.setFirstCharacterOfName('F');
     assertEquals(0, identityStorage.getIdentitiesByFirstCharacterOfName("organization", filter, 0, 1, false).size());
@@ -509,7 +507,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
   @MaxQueryNumber(2000)
   public void testGetIdentitiesByProfileFilterCount() throws Exception {
     populateData();
-    
+
     ProfileFilter pf = new ProfileFilter();
     
     int idsCount = identityStorage.getIdentitiesByProfileFilterCount("organization", pf);
@@ -569,7 +567,7 @@ public class IdentityStorageTest extends AbstractCoreTest {
    * Tests {@link IdenityStorage#findIdentityByProfileFilterCount(String, ProfileFilter)}
    * 
    */
-  @MaxQueryNumber(200)
+  @MaxQueryNumber(258)
   public void testUpdateIdentity() throws Exception {
     String providerId = OrganizationIdentityProvider.NAME;
     String newProviderId = "space";
