@@ -2,6 +2,7 @@ package org.exoplatform.social.core.storage.mongodb;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.apache.commons.lang.Validate;
 import org.bson.types.BasicBSONList;
 import org.bson.types.ObjectId;
 import org.exoplatform.container.ExoContainerContext;
+import org.exoplatform.container.PortalContainer;
 import org.exoplatform.services.jcr.RepositoryService;
 import org.exoplatform.services.jcr.config.RepositoryConfigurationException;
 import org.exoplatform.services.log.ExoLogger;
@@ -25,29 +27,25 @@ import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.ActivityProcessor;
 import org.exoplatform.social.core.activity.filter.ActivityFilter;
 import org.exoplatform.social.core.activity.filter.ActivityUpdateFilter;
-import org.exoplatform.social.core.activity.model.ActivityStream;
-import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
-import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.mongo.entity.ActivityMongoEntity;
 import org.exoplatform.social.core.mongo.entity.ActivityRefMongoEntity;
 import org.exoplatform.social.core.mongo.entity.ActivityRefMongoEntity.ViewerType;
 import org.exoplatform.social.core.mongo.entity.CommentMongoEntity;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.relationship.model.Relationship.Type;
-import org.exoplatform.social.core.service.LinkProvider;
 import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.ActivityStorageException;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
-import org.exoplatform.social.core.storage.api.ActivityStreamStorage;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.api.RelationshipStorage;
 import org.exoplatform.social.core.storage.api.SpaceStorage;
+import org.exoplatform.social.core.storage.cache.model.key.ActivityType;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 import org.exoplatform.social.core.storage.impl.ActivityBuilderWhere;
 import org.exoplatform.social.core.storage.impl.StorageUtils;
@@ -194,21 +192,18 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   private final RelationshipStorage relationshipStorage;
   private final IdentityStorage identityStorage;
   private final SpaceStorage spaceStorage;
-  private final ActivityStreamStorage streamStorage;
   //sets value to tell this storage to inject Streams or not
 
   public ActivityMongoStorageImpl(
       final RelationshipStorage relationshipStorage,
       final IdentityStorage identityStorage,
       final SpaceStorage spaceStorage,
-      final ActivityStreamStorage streamStorage,
       final MongoStorage mongoStorage) {
     
     super(mongoStorage);
     this.relationshipStorage = relationshipStorage;
     this.identityStorage = identityStorage;
     this.spaceStorage = spaceStorage;
-    this.streamStorage = streamStorage;
     this.activityProcessors = new TreeSet<ActivityProcessor>(processorComparator());
   }
   
@@ -242,6 +237,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     ExoSocialActivity activity = new ExoSocialActivityImpl();
     
     fillActivity(activity, entity);
+    processActivity(activity);
     
     return activity;
   }
@@ -260,7 +256,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
   public List<ExoSocialActivity> getUserActivitiesForUpgrade(Identity owner, long offset, long limit) throws ActivityStorageException {
     //
     DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
-    DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
     
     BasicDBObject query = new BasicDBObject();
     
@@ -272,18 +267,24 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     //case user post in space
     BasicDBObject poster = new BasicDBObject(ActivityRefMongoEntity.poster.getName(), owner.getId());
     poster.append(ActivityRefMongoEntity.viewerTypes.getName(), new BasicDBObject("$exists", false));
+    
     //
     query.append("$or", new BasicDBObject[]{poster, viewer});
+    
+    //get since time
+    long sinceTime = getStorage().getSinceTime(owner, offset, ActivityType.USER);
+    if (sinceTime > 0) {
+      query.append(ActivityRefMongoEntity.time.getName(), new BasicDBObject("$lt", sinceTime));
+    }
+    //order
     BasicDBObject sortObj = new BasicDBObject(ActivityRefMongoEntity.time.getName(), -1);
 
-    DBCursor cur = streamCol.find(query).sort(sortObj).skip((int)offset).limit((int)limit);
+    DBCursor cur = streamCol.find(query).sort(sortObj).limit((int)limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
+      ExoSocialActivity activity = getStorage().getActivity(activityId);
       result.add(activity);
     }
     LOG.debug("getUserActivities size = "+ result.size());
@@ -299,7 +300,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     
     //
     DBCollection connectionColl = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
-    DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
     
     String[] identityIds = getIdentities(owner, viewer);
     
@@ -307,16 +307,20 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), new BasicDBObject("$in", identityIds));
     query.append(ActivityRefMongoEntity.viewerTypes.getName(), new BasicDBObject("$in", viewTypes));
     
+    //get since time
+    long sinceTime = getStorage().getSinceTime(owner, offset, ActivityType.VIEWER);
+    if (sinceTime > 0) {
+      query.append(ActivityRefMongoEntity.time.getName(), new BasicDBObject("$lt", sinceTime));
+    }
+    
     BasicDBObject sortObj = new BasicDBObject("time", -1);
 
-    DBCursor cur = connectionColl.find(query).sort(sortObj).skip((int)offset).limit((int)limit);
+    DBCursor cur = connectionColl.find(query).sort(sortObj).limit((int)limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
+      ExoSocialActivity activity = getStorage().getActivity(activityId);
       result.add(activity);
     }
     LOG.debug("getActivities size = "+ result.size());
@@ -356,14 +360,11 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 	  try {
 	    //
 	    DBCollection commentColl = CollectionName.COMMENT_COLLECTION.getCollection(this);
+	    DBCollection activityCol = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
 	    
       //
       long currentMillis = System.currentTimeMillis();
       long commentMillis = (comment.getPostedTime() != null ? comment.getPostedTime() : currentMillis);
-      
-      long oldTime = activity.getPostedTime();
-      updateActivityRef(activity.getId(), commentMillis, oldTime);
-      
       //
       BasicDBObject commentEntity = new BasicDBObject();
       commentEntity.append(CommentMongoEntity.activityId.getName(), activity.getId());
@@ -380,6 +381,24 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
       commentColl.insert(commentEntity);
       
       comment.setId(commentEntity.getString("_id") != null ? commentEntity.getString("_id") : null);
+      comment.setUpdated(commentMillis);
+      
+      //update activity
+      BasicDBObject update = new BasicDBObject("$set", new BasicDBObject(ActivityMongoEntity.lastUpdated.getName(), commentMillis));
+      activityCol.update(new BasicDBObject("_id", new ObjectId(activity.getId())), update);
+      
+      //TODO: Remove this when apply process mention
+      updateActivityRef(activity.getId(), commentMillis);
+      
+      //Identity poster = new Identity(activity.getPosterId());
+      //poster.setRemoteId(activity.getStreamOwner());
+      //
+      //List<String> mentionIds = new ArrayList<String>();
+      //processMentions(activity.getMentionedIds(), comment.getTitle(), mentionIds, true);
+      
+      //
+      //mention(poster, activity, mentionIds.toArray(new String[0]));
+      
     } catch (MongoException ex) {
       throw new ActivityStorageException(ActivityStorageException.Type.FAILED_TO_SAVE_COMMENT, ex.getMessage());
     }
@@ -393,7 +412,61 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     
 	}
 	
-	private void updateActivityRef(String activityId, long time, long oldTime) {
+	private void updateMentionerOnStreamIteam(Identity poster, ExoSocialActivity activity, ExoSocialActivity comment) {
+	  
+	  try {
+      //
+      List<String> mentionIds = new ArrayList<String>();
+      processMentions(activity.getMentionedIds(), comment.getTitle(), mentionIds, true);
+      
+      DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
+      //
+      for (String mentioner : mentionIds) {
+        //skip by poster
+        if (mentioner.equals(activity.getUserId())) continue;
+        
+        BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.activityId.getName(), activity.getId());
+        
+        BasicDBObject[] viewerOrPoster = new BasicDBObject[] {
+            new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), mentioner),
+            new BasicDBObject(ActivityRefMongoEntity.poster.getName(), mentioner) };
+        
+        query.append("$or", viewerOrPoster);
+        
+        BasicDBObject entity = (BasicDBObject) streamCol.findOne(query);
+        //
+        if (entity == null) {
+          //create new stream item
+          entity = StreamViewType.MENTIONER.append(new BasicDBObject());
+          //
+          fillStreamItem(poster, activity, entity);
+          entity.append(ActivityRefMongoEntity.viewerId.getName(), mentioner);
+          entity.append(ActivityRefMongoEntity.time.getName(), comment.getUpdated().getTime());
+          streamCol.insert(entity);
+        } else {
+          //update
+          BasicBSONList viewTypes = (BasicBSONList) entity.get(ActivityRefMongoEntity.viewerTypes.getName());
+          if (viewTypes == null) {
+            ArrayUtils.contains(viewTypes.toArray(new String[0]), ActivityRefMongoEntity.ViewerType.MENTIONER.name());
+          }
+          
+        }
+        
+        fillStreamItem(poster, activity, entity);
+        entity = StreamViewType.MENTIONER.append(entity);
+        //mentioner = identityId@{n}
+        entity.append(ActivityRefMongoEntity.viewerId.getName(), mentioner);
+        entity.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
+        streamCol.insert(entity);
+      }
+      
+    } catch (MongoException e) {
+      LOG.warn("Update mentioner on StreamItem failed. ", e);
+    }
+    
+	}
+	
+	private void updateActivityRef(String activityId, long time) {
 	  DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
 	  //
     BasicDBObject update = new BasicDBObject();
@@ -457,59 +530,52 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
    */
   private void fillActivityEntityFromActivity(Identity owner, ExoSocialActivity activity, BasicDBObject activityEntity, boolean isNew) {
     
-    try {
-      
-      long currentMillis = System.currentTimeMillis();
-      long activityMillis = (activity.getPostedTime() != null ? activity.getPostedTime() : currentMillis);
-      
-      if (isNew) {
-        // Create activity
-        activityEntity.append(ActivityMongoEntity.postedTime.getName(), activityMillis);
-        activityEntity.append(ActivityMongoEntity.lastUpdated.getName(), activityMillis);
-        //
-        activityEntity.append(ActivityMongoEntity.titleId.getName(), activity.getTitleId());
-        activityEntity.append(ActivityMongoEntity.bodyId.getName(), activity.getBodyId());
-        
-        // Fill activity model
-        IdentityEntity identityEntity = _findById(IdentityEntity.class, owner.getId());
-        activity.setStreamOwner(identityEntity.getRemoteId());
-        activity.setPostedTime(activityMillis);
-        activity.setReplyToId(new String[]{});
-        //poster
-        String posterId = activity.getUserId() != null ? activity.getUserId() : owner.getId();
-        activityEntity.append(ActivityMongoEntity.poster.getName(), posterId);
-        activityEntity.append(ActivityMongoEntity.owner.getName(), identityEntity.getRemoteId());
-        activity.setPosterId(posterId);
-      }
-      
-      if (activity.getTitle() != null) {
-        activityEntity.append(ActivityMongoEntity.title.getName(), activity.getTitle());
-      }
-      
-      if (activity.getBody() != null) {
-        activityEntity.append(ActivityMongoEntity.body.getName() , activity.getBody());
-      }
-      
-      activityEntity.append(ActivityMongoEntity.permaLink.getName(),  activity.getPermaLink());
-      //mentioners
-      List<String> mentioners = new ArrayList<String>();
-      activity.setMentionedIds(processMentions(activity.getMentionedIds(), activity.getTitle(), mentioners, true));
-      activityEntity.append(ActivityMongoEntity.mentioners.getName(), activity.getMentionedIds());
-      
-      activityEntity.append(ActivityMongoEntity.likers.getName(), activity.getLikeIdentityIds());
-      
-      activityEntity.append(ActivityMongoEntity.hidable.getName(),  activity.isHidden());
-      activityEntity.append(ActivityMongoEntity.lockable.getName(),  activity.isLocked());
-      
-      activityEntity.append(ActivityMongoEntity.appId.getName(), activity.getAppId());
-      activityEntity.append(ActivityMongoEntity.externalId.getName(), activity.getExternalId());
-      
-      activity.setUpdated(activityMillis);
-      
-    } catch (NodeNotFoundException e) {
-      LOG.debug("Could not found identity "+ owner.getId());
+    long currentMillis = System.currentTimeMillis();
+    long activityMillis = (activity.getPostedTime() != null ? activity.getPostedTime() : currentMillis);
+
+    if (isNew) {
+      // Create activity
+      activityEntity.append(ActivityMongoEntity.postedTime.getName(), activityMillis);
+      activityEntity.append(ActivityMongoEntity.lastUpdated.getName(), activityMillis);
+      //
+      activityEntity.append(ActivityMongoEntity.titleId.getName(), activity.getTitleId());
+      activityEntity.append(ActivityMongoEntity.bodyId.getName(), activity.getBodyId());
+
+      // Fill activity model
+      activity.setStreamOwner(owner.getRemoteId());
+      activity.setPostedTime(activityMillis);
+      activity.setReplyToId(new String[]{});
+      //poster
+      String posterId = activity.getUserId() != null ? activity.getUserId() : owner.getId();
+      activityEntity.append(ActivityMongoEntity.poster.getName(), posterId);
+      activityEntity.append(ActivityMongoEntity.owner.getName(), owner.getRemoteId());
+      activity.setPosterId(posterId);
     }
-    
+
+    if (activity.getTitle() != null) {
+      activityEntity.append(ActivityMongoEntity.title.getName(), activity.getTitle());
+    }
+
+    if (activity.getBody() != null) {
+      activityEntity.append(ActivityMongoEntity.body.getName() , activity.getBody());
+    }
+
+    activityEntity.append(ActivityMongoEntity.permaLink.getName(),  activity.getPermaLink());
+    //mentioners
+    List<String> mentioners = new ArrayList<String>();
+    activity.setMentionedIds(processMentions(activity.getMentionedIds(), activity.getTitle(), mentioners, true));
+    activityEntity.append(ActivityMongoEntity.mentioners.getName(), activity.getMentionedIds());
+
+    activityEntity.append(ActivityMongoEntity.likers.getName(), activity.getLikeIdentityIds());
+
+    activityEntity.append(ActivityMongoEntity.hidable.getName(),  activity.isHidden());
+    activityEntity.append(ActivityMongoEntity.lockable.getName(),  activity.isLocked());
+
+    activityEntity.append(ActivityMongoEntity.appId.getName(), activity.getAppId());
+    activityEntity.append(ActivityMongoEntity.externalId.getName(), activity.getExternalId());
+
+    activity.setUpdated(activityMillis);
+      
   }
   
   /*
@@ -544,48 +610,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     
   }
   
-  private void fillStream(ActivityEntity activityEntity, ExoSocialActivity activity) {
-
-    //
-    ActivityStream stream = new ActivityStreamImpl();
-    
-    IdentityEntity identityEntity = null;
-
-    //update new stream owner
-    try {
-      Identity streamOwnerIdentity = identityStorage.findIdentity(SpaceIdentityProvider.NAME, activity.getStreamOwner());
-      if (streamOwnerIdentity == null) {
-        streamOwnerIdentity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, activity.getStreamOwner());
-      }
-      IdentityEntity streamOwnerEntity = _findById(IdentityEntity.class, streamOwnerIdentity.getId());
-      identityEntity = streamOwnerEntity;
-      activityEntity.setIdentity(streamOwnerEntity);
-    } catch (Exception e) {
-      identityEntity = activityEntity.getIdentity();
-    }
-    //
-    stream.setId(identityEntity.getId());
-    stream.setPrettyId(identityEntity.getRemoteId());
-    stream.setType(identityEntity.getProviderId());
-    
-    //Identity identity = identityStorage.findIdentityById(identityEntity.getId());
-    if (identityEntity != null && SpaceIdentityProvider.NAME.equals(identityEntity.getProviderId())) {
-      Space space = spaceStorage.getSpaceByPrettyName(identityEntity.getRemoteId());
-      //work-around for SOC-2366 when rename space's display name.
-      if (space != null) {
-        String groupId = space.getGroupId().split("/")[2];
-        stream.setPermaLink(LinkProvider.getActivityUriForSpace(identityEntity.getRemoteId(), groupId));
-      }
-    } else {
-      stream.setPermaLink(LinkProvider.getActivityUri(identityEntity.getProviderId(), identityEntity.getRemoteId()));
-    }
-    //
-    activity.setActivityStream(stream);
-    activity.setStreamId(stream.getId());
-    activity.setStreamOwner(stream.getPrettyId());
-
-  }
-	
 	/*
    * Internal
    */
@@ -615,7 +639,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
       //connection
       connection(poster, activity);
       //mention
-      mention(poster, activity);
+      mention(poster, activity, activity.getMentionedIds());
     } else {
       //for SPACE
       spaceMembers(poster, activity);
@@ -638,14 +662,19 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
    * @param activity
    * @throws MongoException
    */
-  private void mention(Identity poster, ExoSocialActivity activity) throws MongoException {
+  private void mention(Identity poster, ExoSocialActivity activity, String[] mentionIds) throws MongoException {
     DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
     //
-    for (String mentioner : activity.getMentionedIds()) {
+    for (String mentioner : mentionIds) {
+      //skip poster
+      if (mentioner.equals(poster.getId())) {
+        continue;
+      }
       BasicDBObject entity = new BasicDBObject();
       fillStreamItem(poster, activity, entity);
       entity = StreamViewType.MENTIONER.append(entity);
-      entity.append(ActivityRefMongoEntity.viewerId.getName(), mentioner);
+      //mentioner = identityId@{n}
+      entity.append(ActivityRefMongoEntity.viewerId.getName(), mentioner.split(MENTION_CHAR)[0]);
       entity.append(ActivityRefMongoEntity.time.getName(), activity.getPostedTime());
       streamCol.insert(entity);
     }
@@ -792,8 +821,67 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 
   @Override
   public void deleteComment(String activityId, String commentId) throws ActivityStorageException {
-		
+    //
+    DBCollection commentCol = CollectionName.COMMENT_COLLECTION.getCollection(this);
+    DBCollection activityCol = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
+    BasicDBObject query = new BasicDBObject();
+    query.append("_id", new ObjectId(commentId));
+    
+    BasicDBObject comment = (BasicDBObject) commentCol.findOne(query);
+    
+    WriteResult result = commentCol.remove(query);
+    LOG.debug("DELETE COMMENT: " + result);
+    
+    //update again activity
+    query = new BasicDBObject("_id", new ObjectId(activityId));
+    BasicDBObject activity = (BasicDBObject) activityCol.findOne(query);
+    
+    List<String> mentionIds = new ArrayList<String>();
+    BasicBSONList mentions = (BasicBSONList) activity.get(ActivityMongoEntity.mentioners.getName());
+    String[] new_mentions = processMentions(mentions.toArray(new String[0]), 
+                                            comment.getString(ActivityMongoEntity.title.getName()), mentionIds, false);
+    
+    BasicDBObject update = new BasicDBObject();
+    update.append("$set", new BasicDBObject(ActivityMongoEntity.mentioners.getName(), new_mentions));
+    //
+    activityCol.update(query, update);
+    
+    //update activities refs for mentioner
+    removeMentionerOnStreamItem(activityId, mentionIds.toArray(new String[0]));
 	}
+  
+  private void removeMentionerOnStreamItem(String activityId, String... mentionIds) {
+    //
+    DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
+    BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.activityId.getName(), activityId);
+    
+    BasicDBObject byViewer = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), new BasicDBObject("$in", mentionIds));
+    BasicDBObject byPoster = new BasicDBObject(ActivityRefMongoEntity.poster.getName(), new BasicDBObject("$in", mentionIds));
+    query.append("$or", new BasicDBObject[] {byViewer, byPoster} );
+    
+    DBCursor cur = streamCol.find(query);
+    while (cur.hasNext()) {
+      BasicDBObject it = (BasicDBObject) cur.next();
+      //update
+      BasicBSONList viewTypes = (BasicBSONList) it.get(ActivityRefMongoEntity.viewerTypes.getName());
+      if (viewTypes != null) {
+        String[] oldViewTypes = viewTypes.toArray(new String[0]);
+        //
+        if (oldViewTypes.length == 0) continue;
+        
+        String[] newViewTypes = (String[]) ArrayUtils.removeElement(oldViewTypes, ActivityRefMongoEntity.ViewerType.MENTIONER.name());
+        if (newViewTypes.length == 0) {
+          streamCol.remove(it);
+        }
+        //update ViewTypes field if has changed
+        if (newViewTypes.length > 0 && oldViewTypes.length > newViewTypes.length) {
+          BasicDBObject update = new BasicDBObject("$set", new BasicDBObject(ActivityRefMongoEntity.viewerTypes.getName(), newViewTypes));
+          streamCol.update(it, update);
+        }
+      }
+    }
+    
+  }
 
 	@Override
 	public List<ExoSocialActivity> getActivitiesOfIdentities(
@@ -869,7 +957,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
                                                            int limit) {
     //
     DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
-    DBCollection activityCol = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
+    //DBCollection activityCol = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
     BasicDBObject query = new BasicDBObject();
     BasicDBObject byViewer = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), ownerIdentity.getId());
     
@@ -881,16 +969,21 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     }
     BasicDBObject bySpaces = new BasicDBObject(ActivityRefMongoEntity.owner.getName(), new BasicDBObject("$in", spaceIds));
     query.append("$or", new BasicDBObject[]{ byViewer, bySpaces });
+    
+    //get since time
+    long sinceTime = getStorage().getSinceTime(ownerIdentity, offset, ActivityType.FEED);
+    if (sinceTime > 0) {
+      query.append(ActivityRefMongoEntity.time.getName(), new BasicDBObject("$lt", sinceTime));
+    }
+    
     BasicDBObject sortObj = new BasicDBObject(ActivityRefMongoEntity.time.getName(), -1);
 
-    DBCursor cur = streamCol.find(query).sort(sortObj).skip(offset).limit(limit);
+    DBCursor cur = streamCol.find(query).sort(sortObj).limit(limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityCol.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
+      ExoSocialActivity activity = getStorage().getActivity(activityId);
       result.add(activity);
     }
     LOG.debug("getActivityFeed size = "+ result.size());
@@ -959,20 +1052,24 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
                                                                       int limit) {
     //
     DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
-    DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
+    //DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
     BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.viewerId.getName(), ownerIdentity.getId());
     //query.append(ActivityRefMongoEntity.viewerTypes.getName(), ActivityRefMongoEntity.ViewerType.CONNECTION.name());
     query.append(ActivityRefMongoEntity.viewerTypes.getName(), new BasicDBObject("$in", new String[] {ActivityRefMongoEntity.ViewerType.CONNECTION.name()}));
+    
+    //get since time
+    long sinceTime = getStorage().getSinceTime(ownerIdentity, offset, ActivityType.CONNECTION);
+    if (sinceTime > 0) {
+      query.append(ActivityRefMongoEntity.time.getName(), new BasicDBObject("$lt", sinceTime));
+    }
     BasicDBObject sortObj = new BasicDBObject("time", -1);
-
-    DBCursor cur = streamCol.find(query).sort(sortObj).skip(offset).limit(limit);
+    
+    DBCursor cur = streamCol.find(query).sort(sortObj).limit(limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
+      ExoSocialActivity activity = getStorage().getActivity(activityId);
       result.add(activity);
     }
     LOG.debug("getActivitiesOfConnections size = "+ result.size());
@@ -1033,7 +1130,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
                                                          int limit) {
     //
     DBCollection streamCol = getCollection(CollectionName.STREAM_ITEM_COLLECTION.collectionName());
-    DBCollection activityColl = getCollection(CollectionName.ACTIVITY_COLLECTION.collectionName());
     
     List<Space> spaces = spaceStorage.getMemberSpaces(ownerIdentity.getRemoteId());
     String[] spaceIds = new String[0];
@@ -1042,17 +1138,22 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     }
     BasicDBObject query = new BasicDBObject();
     query.append(ActivityRefMongoEntity.owner.getName(), new BasicDBObject("$in", spaceIds));
+    
+    //get since time
+    long sinceTime = getStorage().getSinceTime(ownerIdentity, offset, ActivityType.SPACES);
+    if (sinceTime > 0) {
+      query.append(ActivityRefMongoEntity.time.getName(), new BasicDBObject("$lt", sinceTime));
+    }
+    
     //sort by time DESC
     BasicDBObject sortObj = new BasicDBObject(ActivityRefMongoEntity.time.getName(), -1);
 
-    DBCursor cur = streamCol.find(query).sort(sortObj).skip(offset).limit(limit);
+    DBCursor cur = streamCol.find(query).sort(sortObj).limit(limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
+      ExoSocialActivity activity = getStorage().getActivity(activityId);
       result.add(activity);
     }
     LOG.debug("getUserSpacesActivities size = "+ result.size());
@@ -1117,6 +1218,8 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
       ExoSocialActivity activity = new ExoSocialActivityImpl();
       fillActivity(activity, entity);
       activity.isComment(true);
+      
+      processActivity(activity);
       result.add(activity);
     }
     LOG.debug("=======>getComments SIZE ="+ result.size());
@@ -1159,7 +1262,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
 
 	@Override
 	public SortedSet<ActivityProcessor> getActivityProcessors() {
-		return null;
+		return activityProcessors;
 	}
 
 	@Override
@@ -1182,9 +1285,8 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     
     //
     long currentMillis = System.currentTimeMillis();
-    long oldTime = existingActivity.getPostedTime();
     LOG.debug("==============>UPDATED ACTIVITY REF [TIME]: " + currentMillis);
-    updateActivityRef(existingActivity.getId(), currentMillis, oldTime);
+    updateActivityRef(existingActivity.getId(), currentMillis);
     
 	}
 
@@ -1246,20 +1348,23 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
                                                               int limit) {
     //
     DBCollection connectionColl = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
-    DBCollection activityColl = CollectionName.ACTIVITY_COLLECTION.getCollection(this);
     
     BasicDBObject query = new BasicDBObject(ActivityRefMongoEntity.owner.getName(), spaceIdentity.getRemoteId());
+
+    //get since time
+    long sinceTime = getStorage().getSinceTime(spaceIdentity, index, ActivityType.SPACE);
+    if (sinceTime > 0) {
+      query.append(ActivityRefMongoEntity.time.getName(), new BasicDBObject("$lt", sinceTime));
+    }
     //sort by time DESC
     BasicDBObject sortObj = new BasicDBObject(ActivityRefMongoEntity.time.getName(), -1);
 
-    DBCursor cur = connectionColl.find(query).sort(sortObj).skip(index).limit(limit);
+    DBCursor cur = connectionColl.find(query).sort(sortObj).limit(limit);
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     while (cur.hasNext()) {
       BasicDBObject row = (BasicDBObject) cur.next();
       String activityId = row.getString(ActivityRefMongoEntity.activityId.getName());
-      BasicDBObject entity = (BasicDBObject) activityColl.findOne(new BasicDBObject("_id", new ObjectId(activityId)));
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
+      ExoSocialActivity activity = getStorage().getActivity(activityId);
       result.add(activity);
     }
     LOG.debug("getSpaceActivities size = "+ result.size());
@@ -1464,7 +1569,6 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     return 0;
   }
 
-
   public ExoSocialActivity getComment(String commentId) throws ActivityStorageException {
     //
     DBCollection collection = CollectionName.COMMENT_COLLECTION.getCollection(this);
@@ -1478,7 +1582,35 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     fillActivity(activity, entity);
     activity.isComment(true);
     
+    processActivity(activity);
+    
     return activity;
+  }
+  
+  private void processActivity(ExoSocialActivity existingActivity) {
+    Iterator<ActivityProcessor> it = activityProcessors.iterator();
+    while (it.hasNext()) {
+      try {
+        it.next().processActivity(existingActivity);
+      } catch (Exception e) {
+        LOG.warn("activity processing failed " + e.getMessage());
+      }
+    }
+  }
+  
+  private ActivityStorage getStorage() {
+    if (activityStorage == null) {
+      activityStorage = (ActivityStorage) PortalContainer.getInstance().getComponentInstanceOfType(ActivityStorage.class);
+    }
+    
+    return activityStorage;
+  }
+
+
+  @Override
+  public long getSinceTime(Identity owner, long offset, ActivityType type) throws ActivityStorageException {
+    // TODO Auto-generated method stub
+    return 0;
   }
 
 }

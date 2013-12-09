@@ -19,6 +19,7 @@ package org.exoplatform.social.core.storage.cache;
 
 import org.exoplatform.services.cache.CacheService;
 import org.exoplatform.services.cache.ExoCache;
+import org.exoplatform.social.core.storage.cache.loader.ServiceContext;
 import org.exoplatform.social.core.storage.cache.model.data.ActivityData;
 import org.exoplatform.social.core.storage.cache.model.data.IdentityData;
 import org.exoplatform.social.core.storage.cache.model.data.IntegerData;
@@ -59,6 +60,7 @@ public class SocialStorageCacheService {
   private final ExoCache<IdentityKey, ProfileData> profileCache;
   private final ExoCache<IdentityFilterKey, IntegerData> countIdentitiesCache;
   private final ExoCache<ListIdentitiesKey, ListIdentitiesData> identitiesCache;
+  private final ExoCache<ActivityCountKey, Long> activitySinceTimeCache;
 
   // RelationshipStorage
   private final ExoCache<RelationshipKey, RelationshipData> relationshipCache;
@@ -107,6 +109,7 @@ public class SocialStorageCacheService {
     this.spacesCache = CacheType.SPACES.getFromService(cacheService);
     
     this.spaceSimpleCache = CacheType.SPACE_SIMPLE.getFromService(cacheService);
+    this.activitySinceTimeCache = CacheType.ACTIVITY_SINCE_TIME.getFromService(cacheService);
 
   }
 
@@ -180,5 +183,9 @@ public class SocialStorageCacheService {
 
   public ExoCache<ListSpacesKey, ListSpacesData> getSpacesCache() {
     return spacesCache;
+  }
+
+  public ExoCache<ActivityCountKey, Long> getActivitySinceTimeCache() {
+    return activitySinceTimeCache;
   }
 }

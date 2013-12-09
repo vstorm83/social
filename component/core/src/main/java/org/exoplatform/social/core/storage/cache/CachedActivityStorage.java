@@ -60,13 +60,13 @@ public class CachedActivityStorage implements ActivityStorage {
   private final ExoCache<ActivityKey, ActivityData> exoActivityCache;
   private final ExoCache<ActivityCountKey, IntegerData> exoActivitiesCountCache;
   private final ExoCache<ListActivitiesKey, ListActivitiesData> exoActivitiesCache;
+  private final ExoCache<ActivityCountKey, Long> exoActivitySinceTimeCache;
 
   private final FutureExoCache<ActivityKey, ActivityData, ServiceContext<ActivityData>> activityCache;
   private final FutureExoCache<ActivityCountKey, IntegerData, ServiceContext<IntegerData>> activitiesCountCache;
+  private final FutureExoCache<ActivityCountKey, Long, ServiceContext<Long>> activitySinceTimeCache;
   private final FutureExoCache<ListActivitiesKey, ListActivitiesData, ServiceContext<ListActivitiesData>> activitiesCache;
 
-  private final ActivityStorageImpl storage;
-  
   private final ActivityMongoStorageImpl mongoStorage;
 
   public void clearCache() {
@@ -74,6 +74,7 @@ public class CachedActivityStorage implements ActivityStorage {
     try {
       exoActivitiesCache.select(new ScopeCacheSelector<ListActivitiesKey, ListActivitiesData>());
       exoActivitiesCountCache.select(new ScopeCacheSelector<ActivityCountKey, IntegerData>());
+      exoActivitySinceTimeCache.select(new ScopeCacheSelector<ActivityCountKey, Long>());
     }
     catch (Exception e) {
       LOG.error(e);
@@ -127,16 +128,25 @@ public class CachedActivityStorage implements ActivityStorage {
    * Build the ids from the activity list.
    *
    * @param activities activities
+   * @param sinceTimeKey
    * @return ids
    */
-  private ListActivitiesData buildIds(List<ExoSocialActivity> activities) {
+  private ListActivitiesData buildIds(List<ExoSocialActivity> activities, final ActivityCountKey sinceTimeKey) {
 
     List<ActivityKey> data = new ArrayList<ActivityKey>();
+    long lastTime = 0;
     for (ExoSocialActivity a : activities) {
       ActivityKey k = new ActivityKey(a.getId());
       exoActivityCache.put(k, new ActivityData(a));
       data.add(k);
+      lastTime = a.getUpdated().getTime();
     }
+    
+    if (sinceTimeKey != null) {
+      exoActivitySinceTimeCache.put(sinceTimeKey, lastTime);
+    }
+    
+    //
     return new ListActivitiesData(data);
 
   }
@@ -144,19 +154,19 @@ public class CachedActivityStorage implements ActivityStorage {
   public CachedActivityStorage(final ActivityStorageImpl storage, final ActivityMongoStorageImpl mongoStorage, final SocialStorageCacheService cacheService) {
 
     //
-    this.storage = storage;
     this.mongoStorage = mongoStorage;
-    this.storage.setStorage(this);
 
     //
     this.exoActivityCache = cacheService.getActivityCache();
     this.exoActivitiesCountCache = cacheService.getActivitiesCountCache();
     this.exoActivitiesCache = cacheService.getActivitiesCache();
+    this.exoActivitySinceTimeCache = cacheService.getActivitySinceTimeCache();
 
     //
     this.activityCache = CacheType.ACTIVITY.createFutureCache(exoActivityCache);
     this.activitiesCountCache = CacheType.ACTIVITIES_COUNT.createFutureCache(exoActivitiesCountCache);
     this.activitiesCache = CacheType.ACTIVITIES.createFutureCache(exoActivitiesCache);
+    this.activitySinceTimeCache = CacheType.ACTIVITY_SINCE_TIME.createFutureCache(exoActivitySinceTimeCache);
 
   }
 
@@ -196,7 +206,7 @@ public class CachedActivityStorage implements ActivityStorage {
    * {@inheritDoc}
    */
   public List<ExoSocialActivity> getUserActivities(final Identity owner) throws ActivityStorageException {
-    return storage.getUserActivities(owner);
+    return mongoStorage.getUserActivities(owner);
   }
 
   /**
@@ -214,7 +224,8 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
             List<ExoSocialActivity> got = mongoStorage.getUserActivities(owner, offset, limit);
-            return buildIds(got);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(owner), ActivityType.USER, offset + limit);
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -262,7 +273,7 @@ public class CachedActivityStorage implements ActivityStorage {
    * {@inheritDoc}
    */
   public ExoSocialActivity getParentActivity(final ExoSocialActivity comment) throws ActivityStorageException {
-    return storage.getParentActivity(comment);
+    return mongoStorage.getParentActivity(comment);
   }
 
   /**
@@ -271,8 +282,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void deleteActivity(final String activityId) throws ActivityStorageException {
 
     //
-    ExoSocialActivity a = storage.getActivity(activityId);
-    storage.deleteActivity(activityId);
+    mongoStorage.deleteActivity(activityId);
 
     //
     ActivityKey key = new ActivityKey(activityId);
@@ -287,7 +297,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void deleteComment(final String activityId, final String commentId) throws ActivityStorageException {
     
     //
-    storage.deleteComment(activityId, commentId);
+    mongoStorage.deleteComment(activityId, commentId);
 
     //
     exoActivityCache.remove(new ActivityKey(commentId));
@@ -315,8 +325,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivitiesOfIdentities(connectionList, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getActivitiesOfIdentities(connectionList, offset, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -331,7 +341,7 @@ public class CachedActivityStorage implements ActivityStorage {
    */
   public List<ExoSocialActivity> getActivitiesOfIdentities(final List<Identity> connectionList, final TimestampType type,
                                                            final long offset, final long limit) throws ActivityStorageException {
-    return storage.getActivitiesOfIdentities(connectionList, type, offset, limit);
+    return mongoStorage.getActivitiesOfIdentities(connectionList, type, offset, limit);
   }
 
   /**
@@ -367,7 +377,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfNewerOnUserActivities(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfNewerOnUserActivities(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -389,8 +399,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getNewerOnUserActivities(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getNewerOnUserActivities(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -413,7 +423,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfOlderOnUserActivities(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfOlderOnUserActivities(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -435,8 +445,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getOlderOnUserActivities(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getOlderOnUserActivities(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -460,7 +470,9 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
             List<ExoSocialActivity> got = mongoStorage.getActivityFeed(ownerIdentity, offset, limit);
-            return buildIds(got);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(ownerIdentity), 
+                                                                 ActivityType.FEED, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -504,7 +516,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfNewerOnActivityFeed(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfNewerOnActivityFeed(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -526,8 +538,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getNewerOnActivityFeed(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getNewerOnActivityFeed(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -550,7 +562,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfOlderOnActivityFeed(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfOlderOnActivityFeed(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -572,8 +584,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getOlderOnActivityFeed(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getOlderOnActivityFeed(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -597,7 +609,8 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
             List<ExoSocialActivity> got = mongoStorage.getActivitiesOfConnections(ownerIdentity, offset, limit);
-            return buildIds(got);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(ownerIdentity), ActivityType.CONNECTION, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -620,7 +633,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfActivitiesOfConnections(ownerIdentity));
+            return new IntegerData(mongoStorage.getNumberOfActivitiesOfConnections(ownerIdentity));
           }
         },
         key)
@@ -633,7 +646,7 @@ public class CachedActivityStorage implements ActivityStorage {
    */
   public List<ExoSocialActivity> getActivitiesOfIdentity(final Identity ownerIdentity, final long offset, final long limit)
                                                                                        throws ActivityStorageException {
-    return storage.getActivitiesOfIdentity(ownerIdentity, offset, limit);
+    return mongoStorage.getActivitiesOfIdentity(ownerIdentity, offset, limit);
   }
 
   /**
@@ -649,7 +662,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfNewerOnActivitiesOfConnections(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfNewerOnActivitiesOfConnections(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -672,8 +685,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getNewerOnActivitiesOfConnections(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getNewerOnActivitiesOfConnections(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -696,7 +709,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfOlderOnActivitiesOfConnections(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfOlderOnActivitiesOfConnections(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -719,8 +732,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getOlderOnActivitiesOfConnections(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getOlderOnActivitiesOfConnections(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -743,8 +756,10 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getUserSpacesActivities(ownerIdentity, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getUserSpacesActivities(ownerIdentity, offset, limit);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(ownerIdentity), 
+                                                                 ActivityType.SPACES, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -767,7 +782,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfUserSpacesActivities(ownerIdentity));
+            return new IntegerData(mongoStorage.getNumberOfUserSpacesActivities(ownerIdentity));
           }
         },
         key)
@@ -788,7 +803,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfNewerOnUserSpacesActivities(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfNewerOnUserSpacesActivities(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -810,8 +825,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getNewerOnUserSpacesActivities(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getNewerOnUserSpacesActivities(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -834,7 +849,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfOlderOnUserSpacesActivities(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfOlderOnUserSpacesActivities(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -856,8 +871,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getOlderOnUserSpacesActivities(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getOlderOnUserSpacesActivities(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -880,7 +895,7 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
             List<ExoSocialActivity> got = mongoStorage.getComments(existingActivity, offset, limit);
-            return buildIds(got);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -913,7 +928,7 @@ public class CachedActivityStorage implements ActivityStorage {
    * {@inheritDoc}
    */
   public int getNumberOfNewerComments(final ExoSocialActivity existingActivity, final ExoSocialActivity baseComment) {
-    return storage.getNumberOfNewerComments(existingActivity, baseComment);
+    return mongoStorage.getNumberOfNewerComments(existingActivity, baseComment);
   }
 
   /**
@@ -921,14 +936,14 @@ public class CachedActivityStorage implements ActivityStorage {
    */
   public List<ExoSocialActivity> getNewerComments(final ExoSocialActivity existingActivity, final ExoSocialActivity baseComment,
                                                   final int limit) {
-    return storage.getNewerComments(existingActivity, baseComment, limit);
+    return mongoStorage.getNewerComments(existingActivity, baseComment, limit);
   }
 
   /**
    * {@inheritDoc}
    */
   public int getNumberOfOlderComments(final ExoSocialActivity existingActivity, final ExoSocialActivity baseComment) {
-    return storage.getNumberOfOlderComments(existingActivity, baseComment);
+    return mongoStorage.getNumberOfOlderComments(existingActivity, baseComment);
   }
 
   /**
@@ -936,14 +951,14 @@ public class CachedActivityStorage implements ActivityStorage {
    */
   public List<ExoSocialActivity> getOlderComments(final ExoSocialActivity existingActivity, final ExoSocialActivity baseComment,
                                                   final int limit) {
-    return storage.getOlderComments(existingActivity, baseComment, limit);
+    return mongoStorage.getOlderComments(existingActivity, baseComment, limit);
   }
 
   /**
    * {@inheritDoc}
    */
   public SortedSet<ActivityProcessor> getActivityProcessors() {
-    return storage.getActivityProcessors();
+    return mongoStorage.getActivityProcessors();
   }
 
   /**
@@ -952,7 +967,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void updateActivity(final ExoSocialActivity existingActivity) throws ActivityStorageException {
 
     //
-    storage.updateActivity(existingActivity);
+    mongoStorage.updateActivity(existingActivity);
     
     //
     ActivityKey key = new ActivityKey(existingActivity.getId());
@@ -974,7 +989,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfNewerOnActivityFeed(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfNewerOnActivityFeed(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -990,7 +1005,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfNewerOnUserActivities(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfNewerOnUserActivities(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1004,7 +1019,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfNewerOnActivitiesOfConnections(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfNewerOnActivitiesOfConnections(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1019,7 +1034,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfNewerOnUserSpacesActivities(ownerIdentity,
+        return new IntegerData(mongoStorage.getNumberOfNewerOnUserSpacesActivities(ownerIdentity,
                                                                               sinceTime));
       }
     }, key).build();
@@ -1042,8 +1057,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivitiesOfIdentities(connectionList, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getActivitiesOfIdentities(connectionList, offset, limit);
+            return buildIds(got ,null);
           }
         },
         listKey);
@@ -1079,7 +1094,7 @@ public class CachedActivityStorage implements ActivityStorage {
     IntegerData countData = activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfSpaceActivitiesForUpgrade(spaceIdentity));
+            return new IntegerData(mongoStorage.getNumberOfSpaceActivitiesForUpgrade(spaceIdentity));
           }
         },
         key);
@@ -1102,7 +1117,9 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
             List<ExoSocialActivity> got = mongoStorage.getSpaceActivities(ownerIdentity, offset, limit);
-            return buildIds(got);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(ownerIdentity), 
+                                                                 ActivityType.SPACE, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -1121,8 +1138,10 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getSpaceActivitiesForUpgrade(ownerIdentity, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getSpaceActivitiesForUpgrade(ownerIdentity, offset, limit);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(ownerIdentity), 
+                                                                 ActivityType.SPACE, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -1143,8 +1162,10 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivitiesByPoster(posterIdentity, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getActivitiesByPoster(posterIdentity, offset, limit);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(posterIdentity), 
+                                                                 ActivityType.POSTER, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -1166,8 +1187,10 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivitiesByPoster(posterIdentity, offset, limit, activityTypes);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getActivitiesByPoster(posterIdentity, offset, limit, activityTypes);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(posterIdentity), 
+                                                                 ActivityType.POSTER, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -1218,8 +1241,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getNewerOnSpaceActivities(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getNewerOnSpaceActivities(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -1239,7 +1262,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfNewerOnSpaceActivities(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfNewerOnSpaceActivities(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -1258,8 +1281,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getOlderOnSpaceActivities(ownerIdentity, baseActivity, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getOlderOnSpaceActivities(ownerIdentity, baseActivity, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -1279,7 +1302,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfOlderOnUserSpacesActivities(ownerIdentity, baseActivity));
+            return new IntegerData(mongoStorage.getNumberOfOlderOnUserSpacesActivities(ownerIdentity, baseActivity));
           }
         },
         key)
@@ -1294,7 +1317,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfNewerOnUserSpacesActivities(ownerIdentity,
+        return new IntegerData(mongoStorage.getNumberOfNewerOnUserSpacesActivities(ownerIdentity,
                                                                               sinceTime));
       }
     }, key).build();
@@ -1302,12 +1325,12 @@ public class CachedActivityStorage implements ActivityStorage {
 
   @Override
   public int getNumberOfUpdatedOnActivityFeed(Identity owner, ActivityUpdateFilter filter) {
-    return storage.getNumberOfUpdatedOnActivityFeed(owner, filter);
+    return mongoStorage.getNumberOfUpdatedOnActivityFeed(owner, filter);
   }
 
   @Override
   public int getNumberOfMultiUpdated(Identity owner, Map<String, Long> sinceTimes) {
-    return storage.getNumberOfMultiUpdated(owner, sinceTimes);
+    return mongoStorage.getNumberOfMultiUpdated(owner, sinceTimes);
   }
   
   public List<ExoSocialActivity> getNewerFeedActivities(final Identity owner, final Long sinceTime, final int limit) {
@@ -1316,8 +1339,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getNewerFeedActivities(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getNewerFeedActivities(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1330,8 +1353,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getNewerSpaceActivities(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getNewerSpaceActivities(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1345,8 +1368,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getNewerUserActivities(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getNewerUserActivities(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1360,8 +1383,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getNewerUserSpacesActivities(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getNewerUserSpacesActivities(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1375,8 +1398,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getNewerActivitiesOfConnections(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getNewerActivitiesOfConnections(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1385,22 +1408,22 @@ public class CachedActivityStorage implements ActivityStorage {
   
   @Override
   public int getNumberOfUpdatedOnUserActivities(Identity owner, ActivityUpdateFilter filter) {
-    return storage.getNumberOfUpdatedOnUserActivities(owner, filter);
+    return mongoStorage.getNumberOfUpdatedOnUserActivities(owner, filter);
   }
 
   @Override
   public int getNumberOfUpdatedOnActivitiesOfConnections(Identity owner, ActivityUpdateFilter filter) {
-    return storage.getNumberOfUpdatedOnActivitiesOfConnections(owner, filter);
+    return mongoStorage.getNumberOfUpdatedOnActivitiesOfConnections(owner, filter);
   }
 
   @Override
   public int getNumberOfUpdatedOnUserSpacesActivities(Identity owner, ActivityUpdateFilter filter) {
-    return storage.getNumberOfUpdatedOnUserSpacesActivities(owner, filter);
+    return mongoStorage.getNumberOfUpdatedOnUserSpacesActivities(owner, filter);
   }
 
   @Override
   public int getNumberOfUpdatedOnSpaceActivities(Identity owner, ActivityUpdateFilter filter) {
-    return storage.getNumberOfUpdatedOnSpaceActivities(owner, filter);
+    return mongoStorage.getNumberOfUpdatedOnSpaceActivities(owner, filter);
   }
 
   @Override
@@ -1417,7 +1440,9 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
             List<ExoSocialActivity> got = mongoStorage.getActivities(owner, viewer, offset, limit);
-            return buildIds(got);
+            ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(owner), 
+                                                                 ActivityType.VIEWER, (long) (offset + limit));
+            return buildIds(got, sinceTimeKey);
           }
         },
         listKey);
@@ -1434,8 +1459,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getOlderFeedActivities(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getOlderFeedActivities(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1449,8 +1474,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getOlderUserActivities(ownerIdentity, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getOlderUserActivities(ownerIdentity, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
 
@@ -1464,8 +1489,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getOlderUserSpacesActivities(ownerIdentity, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getOlderUserSpacesActivities(ownerIdentity, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
     
@@ -1479,8 +1504,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getOlderActivitiesOfConnections(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getOlderActivitiesOfConnections(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
     
@@ -1494,8 +1519,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getOlderSpaceActivities(owner, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getOlderSpaceActivities(owner, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
     
@@ -1510,7 +1535,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfOlderOnActivityFeed(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfOlderOnActivityFeed(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1523,7 +1548,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfOlderOnUserActivities(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfOlderOnUserActivities(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1536,7 +1561,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfOlderOnActivitiesOfConnections(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfOlderOnActivitiesOfConnections(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1549,7 +1574,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfOlderOnUserSpacesActivities(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfOlderOnUserSpacesActivities(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1562,7 +1587,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfOlderOnSpaceActivities(ownerIdentity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfOlderOnSpaceActivities(ownerIdentity, sinceTime));
       }
     }, key).build();
   }
@@ -1574,8 +1599,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getNewerComments(existingActivity, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getNewerComments(existingActivity, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
     
@@ -1589,8 +1614,8 @@ public class CachedActivityStorage implements ActivityStorage {
 
     ListActivitiesData keys = activitiesCache.get(new ServiceContext<ListActivitiesData>() {
       public ListActivitiesData execute() {
-        List<ExoSocialActivity> got = storage.getOlderComments(existingActivity, sinceTime, limit);
-        return buildIds(got);
+        List<ExoSocialActivity> got = mongoStorage.getOlderComments(existingActivity, sinceTime, limit);
+        return buildIds(got, null);
       }
     }, listKey);
     
@@ -1603,7 +1628,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfNewerComments(existingActivity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfNewerComments(existingActivity, sinceTime));
       }
     }, key).build();
   }
@@ -1614,7 +1639,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
     return activitiesCountCache.get(new ServiceContext<IntegerData>() {
       public IntegerData execute() {
-        return new IntegerData(storage.getNumberOfOlderComments(existingActivity, sinceTime));
+        return new IntegerData(mongoStorage.getNumberOfOlderComments(existingActivity, sinceTime));
       }
     }, key).build();
   }
@@ -1629,8 +1654,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getUserActivitiesForUpgrade(owner, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getUserActivitiesForUpgrade(owner, offset, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -1675,8 +1700,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivityFeedForUpgrade(ownerIdentity, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getActivityFeedForUpgrade(ownerIdentity, offset, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -1694,7 +1719,7 @@ public class CachedActivityStorage implements ActivityStorage {
     IntegerData countData = activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfActivitesOnActivityFeed(ownerIdentity));
+            return new IntegerData(mongoStorage.getNumberOfActivitesOnActivityFeed(ownerIdentity));
           }
         },
         key);
@@ -1720,8 +1745,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getActivitiesOfConnectionsForUpgrade(ownerIdentity, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getActivitiesOfConnectionsForUpgrade(ownerIdentity, offset, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -1740,7 +1765,7 @@ public class CachedActivityStorage implements ActivityStorage {
     IntegerData countData = activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfActivitiesOfConnectionsForUpgrade(ownerIdentity));
+            return new IntegerData(mongoStorage.getNumberOfActivitiesOfConnectionsForUpgrade(ownerIdentity));
           }
         },
         key);
@@ -1766,8 +1791,8 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = storage.getUserSpacesActivitiesForUpgrade(ownerIdentity, offset, limit);
-            return buildIds(got);
+            List<ExoSocialActivity> got = mongoStorage.getUserSpacesActivitiesForUpgrade(ownerIdentity, offset, limit);
+            return buildIds(got, null);
           }
         },
         listKey);
@@ -1786,7 +1811,7 @@ public class CachedActivityStorage implements ActivityStorage {
     IntegerData countData = activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(storage.getNumberOfUserSpacesActivitiesForUpgrade(ownerIdentity));
+            return new IntegerData(mongoStorage.getNumberOfUserSpacesActivitiesForUpgrade(ownerIdentity));
           }
         },
         key);
@@ -1800,7 +1825,7 @@ public class CachedActivityStorage implements ActivityStorage {
 
   @Override
   public void setInjectStreams(boolean mustInject) {
-    storage.setInjectStreams(mustInject);
+    mongoStorage.setInjectStreams(mustInject);
     
   }
 
@@ -1829,6 +1854,14 @@ public class CachedActivityStorage implements ActivityStorage {
 
     //
     return activity.build();
+  }
+
+  @Override
+  public long getSinceTime(Identity owner, long offset, ActivityType type) throws ActivityStorageException {
+    //
+    ActivityCountKey key = new ActivityCountKey(new IdentityKey(owner), type, offset);
+    Long sinceTime = activitySinceTimeCache.get(key);
+    return sinceTime == null ? 0 : sinceTime;
   }
   
 }

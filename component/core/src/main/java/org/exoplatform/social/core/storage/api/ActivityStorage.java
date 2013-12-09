@@ -27,6 +27,7 @@ import org.exoplatform.social.core.activity.filter.ActivityUpdateFilter;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.storage.ActivityStorageException;
+import org.exoplatform.social.core.storage.cache.model.key.ActivityType;
 import org.exoplatform.social.core.storage.impl.ActivityBuilderWhere;
 
 /**
@@ -1050,4 +1051,13 @@ public interface ActivityStorage {
    * @since 4.0
    */
   public int getNumberOfOlderComments(ExoSocialActivity existingActivity, Long sinceTime);
+  
+  /**
+   * Gets the since time base on the offset.
+   *
+   * @param owner the identity
+   * @param offset
+   * @return the activities
+   */
+  public long getSinceTime(Identity owner, long offset, ActivityType type) throws ActivityStorageException;
 }

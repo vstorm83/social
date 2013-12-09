@@ -167,7 +167,17 @@
             <field name="implementation"><string>org.exoplatform.services.cache.concurrent.ConcurrentFIFOExoCache</string></field>
           </object>
         </object-param>
-
+        <object-param>
+          <name>ActivitySinceTimeCache</name>
+          <description></description>
+          <object type="org.exoplatform.services.cache.ExoCacheConfig">
+            <field name="name"><string>ActivitySinceTimeCache</string></field>
+            <field name="maxSize"><int>${cache.exo.social.ActivitySinceTimeCache.Capacity:4000}</int></field>
+            <field name="liveTime"><long>${cache.exo.social.ActivitySinceTimeCache.TimeToLive:-1}</long></field>
+            <field name="implementation"><string>org.exoplatform.services.cache.concurrent.ConcurrentFIFOExoCache</string></field>
+          </object>
+        </object-param>
+        
         <!-- Spaces -->
         <object-param>
           <name>SpaceCache</name>
@@ -457,6 +467,24 @@
             </field>
             <field name="maxNodes">
              <int>${cache.exo.social.ActivitiesCache.Capacity:4000}</int>
+            </field>
+            <field name="distributed">
+              <boolean>true</boolean>
+            </field>
+          </object>
+        </object-param>
+        <object-param>
+          <name>ActivitySinceTimeCache</name>
+          <description>The JBoss Cache configuration for the ActivitySinceTimeCache</description>
+          <object type="org.exoplatform.services.cache.impl.jboss.ea.EAExoCacheConfig">
+            <field name="name">
+              <string>ActivitySinceTimeCache</string>
+            </field>
+            <field name="expirationTimeout">
+              <long>${cache.exo.social.ActivitySinceTimeCache.TimeToLive:-1}</long>
+            </field>
+            <field name="maxNodes">
+             <int>${cache.exo.social.ActivitySinceTimeCache.Capacity:4000}</int>
             </field>
             <field name="distributed">
               <boolean>true</boolean>
