@@ -24,7 +24,7 @@ import org.exoplatform.social.core.storage.query.PropertyLiteralExpression;
  *          exo@exoplatform.com
  * Nov 21, 2013  
  */
-public class ActivityRefMongoEntity {
+public class StreamItemMongoEntity {
 
   public static final PropertyLiteralExpression<String> id = new PropertyLiteralExpression<String>(String.class, "_id");
   public static final PropertyLiteralExpression<String> activityId = new PropertyLiteralExpression<String>(String.class, "activityId");
@@ -37,7 +37,8 @@ public class ActivityRefMongoEntity {
   public static final PropertyLiteralExpression<Boolean> hiable = new PropertyLiteralExpression<Boolean>(Boolean.class, "hiable");
   public static final PropertyLiteralExpression<Boolean> lockable = new PropertyLiteralExpression<Boolean>(Boolean.class, "lockable");
   public static final PropertyLiteralExpression<Long> time = new PropertyLiteralExpression<Long>(Long.class, "time");
+  public static final PropertyLiteralExpression<String> actionNo = new PropertyLiteralExpression<String>(String.class, "actionNo");
   
-  public enum ViewerType { LIKER, CONNECTION, COMMENTER, POSTER, MENTIONER }
+  public enum ViewerType { LIKER, CONNECTION, COMMENTER, POSTER, MENTIONER, SPACE_MEMBER }
   
 }
