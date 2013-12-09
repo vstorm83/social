@@ -22,6 +22,7 @@
     <repository name="repository" system-workspace="system" default-workspace="portal-test">
       <security-domain>gatein-domain</security-domain>
       <access-control>optional</access-control>
+      <session-max-age>30</session-max-age>
       <authentication-policy>org.exoplatform.services.jcr.impl.core.access.JAASAuthenticator</authentication-policy>
 
       <!-- System -->
@@ -72,7 +73,6 @@
               <property name="time-out" value="15m"/>
               <property name="jbosscache-configuration"
                         value="conf/exo.portal.component.test.jcr-jbosscache-lock-config.xml"/>
-              <property name="jbosscache-cl-cache.jdbc.datasource" value="jdbcexo"/>
             </properties>
           </lock-manager>
         </workspace>
@@ -126,7 +126,6 @@
               <property name="time-out" value="15m"/>
               <property name="jbosscache-configuration"
                         value="jar:/conf/exo.portal.component.test.jcr-jbosscache-lock-config.xml"/>
-              <property name="jbosscache-cl-cache.jdbc.datasource" value="jdbcexo"/>
             </properties>
           </lock-manager>
         </workspace>
