@@ -39,6 +39,6 @@ public class StreamItemMongoEntity {
   public static final PropertyLiteralExpression<Long> time = new PropertyLiteralExpression<Long>(Long.class, "time");
   public static final PropertyLiteralExpression<String> actionNo = new PropertyLiteralExpression<String>(String.class, "actionNo");
   
-  public enum ViewerType { LIKER, CONNECTION, COMMENTER, POSTER, MENTIONER, SPACE_MEMBER }
+  public enum ViewerType { LIKER, COMMENTER, POSTER, MENTIONER }
   
 }
