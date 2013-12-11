@@ -951,23 +951,8 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     poster.append(StreamItemMongoEntity.viewerTypes.getName(), new BasicDBObject("$exists", false));
     //
     query.append("$or", new BasicDBObject[]{poster, viewer});
-    BasicDBObject fields = new BasicDBObject(StreamItemMongoEntity.activityId.getName(), 1);
-    
-    //KEEP the distinct activity ids
-    Set<String> activityIds = new HashSet<String>();
-    
-    DBCursor cur = streamCol.find(query, fields);
-    while (cur.hasNext()) {
-      BasicDBObject row = (BasicDBObject) cur.next();
-      String activityId = row.getString(StreamItemMongoEntity.activityId.getName());
-      
-      if (activityIds.contains(activityId)) {
-        continue;
-      }
-      activityIds.add(activityId);
-    }
 
-    return activityIds.size();
+    return streamCol.distinct(StreamItemMongoEntity.activityId.getName(), query).size();
 	}
 
 	@Override
@@ -1077,23 +1062,8 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     }
     BasicDBObject bySpaces = new BasicDBObject(StreamItemMongoEntity.owner.getName(), new BasicDBObject("$in", spaceIds));
     query.append("$or", new BasicDBObject[]{ byViewer, bySpaces });
-    BasicDBObject fields = new BasicDBObject(StreamItemMongoEntity.activityId.getName(), 1);
-    
-    //KEEP the distinct activity ids
-    Set<String> activityIds = new HashSet<String>();
-    
-    DBCursor cur = streamCol.find(query, fields);
-    while (cur.hasNext()) {
-      BasicDBObject row = (BasicDBObject) cur.next();
-      String activityId = row.getString(StreamItemMongoEntity.activityId.getName());
-      
-      if (activityIds.contains(activityId)) {
-        continue;
-      }
-      activityIds.add(activityId);
-    }
 
-    return activityIds.size();
+    return streamCol.distinct(StreamItemMongoEntity.activityId.getName(), query).size();
   }
 
   @Override
@@ -1167,7 +1137,7 @@ public class ActivityMongoStorageImpl extends AbstractMongoStorage implements Ac
     DBCollection streamCol = CollectionName.STREAM_ITEM_COLLECTION.getCollection(this);
     BasicDBObject query = new BasicDBObject(StreamItemMongoEntity.viewerId.getName(), ownerIdentity.getId());
     query.append(StreamItemMongoEntity.viewerTypes.getName(), StreamItemMongoEntity.ViewerType.CONNECTION.name());
-    return streamCol.find(query).size();
+    return streamCol.distinct(StreamItemMongoEntity.activityId.getName(), query).size();
   }
 
   @Override
