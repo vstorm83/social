@@ -1,33 +1,30 @@
 package org.exoplatform.social.core.storage.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import javax.jcr.RepositoryException;
-
 import org.chromattic.api.ChromatticSession;
 import org.exoplatform.commons.chromattic.ChromatticManager;
-import org.exoplatform.commons.utils.ListAccess;
+import org.exoplatform.commons.chromattic.Synchronization;
+import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.container.PortalContainer;
-import org.exoplatform.services.jcr.RepositoryService;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
-import org.exoplatform.services.organization.OrganizationService;
-import org.exoplatform.services.organization.User;
 import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
 import org.exoplatform.social.core.chromattic.entity.ProfileEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.profile.ProfileFilter;
-import org.exoplatform.social.core.space.SpaceUtils;
-import org.exoplatform.social.core.storage.IdentityStorageException;
+import org.exoplatform.social.core.space.model.Space;
 import org.exoplatform.social.core.storage.query.JCRProperties;
 import org.exoplatform.social.core.storage.query.QueryFunction;
 import org.exoplatform.social.core.storage.query.WhereExpression;
@@ -47,9 +44,6 @@ public class StorageUtils {
   public static final String SLASH_STR = "/";
   public static final String SOC_ACTIVITY_INFO = "soc:activityInfo";
   public static final String SOC_PREFIX = "soc:";
-  
-  //
-  private static Map<String, List<String>> userInPlatformGroupsMap = new HashMap<String, List<String>>();
   
   //
   private static final Log LOG = ExoLogger.getLogger(StorageUtils.class.getName());
@@ -194,106 +188,28 @@ public class StorageUtils {
                               append(path.replaceAll("%", "%25"));
     return encodedUrl.toString();
   }
-  
+
   /**
-   * Checks Identity in Social is activated or not
-   * @param identity
-   * @return TRUE activated otherwise FALSE
-   * @throws IdentityStorageException
+   * Process Unified Search Condition
+   * @param searchCondition the input search condition
+   * @return List of conditions
+   * @since 4.0.x
    */
-  public static boolean isUserActivated(String remoteId) throws IdentityStorageException {
-
-    try {
-      //
-      PortalContainer container = (PortalContainer)(ExoContainerContext.getCurrentContainer());
-      
-      RepositoryService repo = (RepositoryService) container.getComponentInstanceOfType(RepositoryService.class);
-      //each tenant, there is dedicated organization's users then we need to make map to keep them.
-      String tenantName = repo.getCurrentRepository().getConfiguration().getName();
-      //
-      List<String> userInPlatformGroups = userInPlatformGroupsMap.get(tenantName);
-      //
-      if (userInPlatformGroups == null) {
-        OrganizationService orgService = (OrganizationService) container.getComponentInstanceOfType(OrganizationService.class);
-        
-        //
-        ListAccess<User> listAccess = orgService.getUserHandler()
-                                                .findUsersByGroupId(SpaceUtils.PLATFORM_USERS_GROUP);
-
-        int offset = 0;
-        int limit = 100;
-        int totalSize = listAccess.getSize();
-
-        userInPlatformGroups = new ArrayList<String>();
-        limit = Math.min(limit, totalSize);
-        int loaded = 0;
-        
-        loaded = loadUserRange(listAccess, offset, limit, userInPlatformGroups);
-        LOG.trace("Users in Plafform Groups loading [size =" + loaded + "]");
-        
-        if (limit != totalSize) {
-          while (loaded == 100) {
-            offset += limit;
-            
-            //prevent to over totalSize
-            if (offset + limit > totalSize) {
-              limit = totalSize - offset;
-            }
-            
-            //
-            loaded = loadUserRange(listAccess, offset, limit, userInPlatformGroups);
-          }
-        }
-        
-        LOG.trace("Users in Plafform Groups [size = " + userInPlatformGroups.size() + "]");
-        LOG.trace("Users in Plafform Groups[" + userInPlatformGroups + "]");
-      }
-      
-      LOG.trace("[The " + remoteId + " is contained in  platform/users group?" + userInPlatformGroups.contains(remoteId) + " ]");
-      
-      userInPlatformGroupsMap.put(tenantName, userInPlatformGroups);
-      
-      return userInPlatformGroups.contains(remoteId);
-    } catch (Exception e) {
-      throw new IdentityStorageException(IdentityStorageException.Type.FAIL_TO_GET_IDENTITY_BY_PROFILE_FILTER,
-                                         e.getMessage());
-    }
-  }
-  
-  /**
-   * Gets User range for given group
-   * @param listAccess
-   * @param offset
-   * @param limit
-   * @param userList
-   * @return
-   * @throws Exception
-   */
-  private static int loadUserRange(ListAccess<User> listAccess, int  offset, int limit, List<String> userList) throws Exception {
-    User[] gotList = listAccess.load(offset, limit);
-    for(User item : gotList) {
-      userList.add(item.getUserName());
-    }
+  public static List<String> processUnifiedSearchCondition(String searchCondition) {
+    String[] spaceConditions = searchCondition.split(" ");
+    List<String> result = new ArrayList<String>(spaceConditions.length);
     //
-    return gotList.length;
-  }
-  
-  /**
-   * there is any update in platform/users group, we need to take care.
-   */
-  public static void clearUsersPlatformGroup() {
-    PortalContainer container = (PortalContainer)(ExoContainerContext.getCurrentContainer());
-    String tenantName = "";
-    try {
-      RepositoryService repo = (RepositoryService) container.getComponentInstanceOfType(RepositoryService.class);
-      //each tenant, there is dedicated organization's users then we need to make map to keep them.
-      tenantName = repo.getCurrentRepository().getConfiguration().getName();
-      userInPlatformGroupsMap.remove(tenantName);
-    } catch (RepositoryException e) {
-      LOG.warn("Wrong to clear the users for reporitory" + tenantName);
+    StringBuffer searchConditionBuffer = null;
+    for (String conditionValue : spaceConditions) {
+      //
+      searchConditionBuffer = new StringBuffer();
+      //
+      conditionValue = conditionValue.replace(ASTERISK_STR, PERCENT_STR);
+      searchConditionBuffer.append(PERCENT_STR).append(conditionValue).append(PERCENT_STR);
+      //
+      result.add(searchConditionBuffer.toString());
     }
-    
-    
+    return result;
   }
   
   /**
@@ -340,30 +256,45 @@ public class StorageUtils {
   }
   
   /**
-   * Process Unified Search Condition
-   * @param searchCondition the input search condition
-   * @return List of conditions
-   * @since 4.0.x
+   * Sort list of spaces by space's display name
+   * 
+   * @param list
+   * @param asc
+   * @return sorted list
    */
-  public static List<String> processUnifiedSearchCondition(String searchCondition) {
-    String[] spaceConditions = searchCondition.split(" ");
-    List<String> result = new ArrayList<String>(spaceConditions.length);
+  public static List<Space> sortSpaceByName(List<Space> list, final boolean asc) {
     //
-    StringBuffer searchConditionBuffer = null;
-    for (String conditionValue : spaceConditions) {
-      //
-      searchConditionBuffer = new StringBuffer();
-      //
-      if (!conditionValue.contains(ASTERISK_STR) && !conditionValue.contains(PERCENT_STR)) {
-        searchConditionBuffer.append(ASTERISK_STR).append(conditionValue).append(ASTERISK_STR);
-      } else {
-        conditionValue = conditionValue.replace(ASTERISK_STR, PERCENT_STR);
-        searchConditionBuffer.append(PERCENT_STR).append(conditionValue).append(PERCENT_STR);
+    Collections.sort(list, new Comparator<Space>() {
+      public int compare(Space o1, Space o2) {
+        if (asc)
+          return (o1.getDisplayName()).compareTo(o2.getDisplayName());
+        else
+          return (o1.getDisplayName()).compareTo(o2.getDisplayName()) / -1;
       }
-      //
-      result.add(searchConditionBuffer.toString());
-    }
-    return result;
+    });
+
+    return list;
+  }
+  
+  /**
+   * Sort list of identities by full name
+   * 
+   * @param list
+   * @param asc
+   * @return sorted list
+   */
+  public static List<Identity> sortIdentitiesByFullName(List<Identity> list, final boolean asc) {
+    //
+    Collections.sort(list, new Comparator<Identity>() {
+      public int compare(Identity o1, Identity o2) {
+        if (asc)
+          return (o1.getProfile().getFullName()).compareTo(o2.getProfile().getFullName());
+        else
+          return (o1.getProfile().getFullName()).compareTo(o2.getProfile().getFullName()) / -1;
+      }
+    });
+
+    return list;
   }
   
   /**
@@ -384,5 +315,124 @@ public class StorageUtils {
     }
     
     return list.subList(startIndex, toIndex);
+  }
+  /*
+   * Gets added element when compares between l1 and l2
+   * @param l1
+   * @param l2
+   * @return
+   */
+  public static String[] sub(String[] l1, String[] l2) {
+
+    if (l1 == null) {
+      return new String[]{};
+    }
+
+    if (l2 == null) {
+      return l1;
+    }
+
+    List<String> l = new ArrayList(Arrays.asList(l1));
+    l.removeAll(Arrays.asList(l2));
+    return l.toArray(new String[]{});
+  }
+  /**
+   * Make the decision to persist JCR Storage or not
+   * @return
+   */
+  public static boolean persist() {
+    try {
+      ChromatticSession chromatticSession = AbstractStorage.lifecycleLookup().getSession();
+      if (chromatticSession.getJCRSession().hasPendingChanges()) {
+        chromatticSession.save();
+      }
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
+  }
+  
+  /**
+   * Make the decision to persist JCR Storage or not
+   * @return
+   */
+  public static boolean persistJCR(boolean beginRequest) {
+    try {
+      //push to JCR
+      AbstractStorage.lifecycleLookup().closeContext(true);
+      
+      if (beginRequest) {
+        AbstractStorage.lifecycleLookup().openContext();
+      }
+      
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
+  }
+  
+  /**
+   * End the request for ChromatticManager 
+   * @return
+   */
+  public static boolean endRequest() {
+    try {
+      
+      ExoContainer container = ExoContainerContext.getCurrentContainer();
+      ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
+      Synchronization synchronization = manager.getSynchronization();
+      if (synchronization != null) {
+        synchronization.setSaveOnClose(true);
+        //close synchronous and session.logout
+        manager.endRequest(true);
+      }
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
+  }
+  
+  /**
+   * Returns a collection containing all the elements in <code>list1</code> that
+   * are also in <code>list2</code>.
+   * 
+   * @param list1
+   * @param list2
+   * @return
+   */
+  public <T> List<T> intersection(List<T> list1, List<T> list2) {
+    List<T> list = new ArrayList<T>();
+
+    for (T t : list1) {
+      if (list2.contains(t)) {
+        list.add(t);
+      }
+    }
+
+    return list;
+  }
+  /**
+   * Returns a array containing all the elements in <code>list1</code> that
+   * @param array1
+   * @param array2
+   * @return
+   */
+  public <T> T[] intersection(T[] array1, T[] array2) {
+    List<T> got = intersection(Arrays.asList(array1), Arrays.asList(array2));
+    return (T[]) got.toArray();
+  }
+  
+  /**
+   * Returns a new {@link List} containing a - b
+   * @param a
+   * @param b
+   * @return
+   */
+  public static <T> List<T> sub(final Collection<T> a, final Collection<T> b) {
+    ArrayList<T> list = new ArrayList<T>(a);
+    for (Iterator<T> it = b.iterator(); it.hasNext();) {
+        list.remove(it.next());
+    }
+    return list;
   }
 }

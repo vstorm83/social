@@ -14,24 +14,19 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.exoplatform.social.common.embedder;
+package org.exoplatform.social.common.service;
 
-/**
- * 
- * @since 4.0.1-GA
- */
-public interface Embedder {
+
+public interface AsyncCallback {
+
   /**
-   * Processes provided url to get, fetch and return data after converted to ExoSocialMedia.
-   * 
-   * @return The data in form of ExoSocialMedia.
+   * This method is invoked once the proccessor is done.
+   * <p/>
+   * If an exception occurred while processing the exchange, the exception field of the
+   * {@Service} being processed will hold the caused exception.
+   *
+   * @param processContext 
    */
-  ExoSocialMedia getExoSocialMedia();
+  void done(ProcessContext processContext);
   
-  /**
-   * Set provided url to Embedder object to process.
-   * 
-   * @param url The provided input url to be processed.
-   */
-  void setUrl(String url);
 }

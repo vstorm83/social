@@ -51,12 +51,15 @@ import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.relationship.model.Relationship;
 import org.exoplatform.social.core.storage.RelationshipStorageException;
 import org.exoplatform.social.core.storage.api.ActivityStorage;
+import org.exoplatform.social.core.storage.api.ActivityStreamStorage;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.api.RelationshipStorage;
 import org.exoplatform.social.core.storage.cache.CachedActivityStorage;
+import org.exoplatform.social.core.storage.cache.CachedActivityStreamStorage;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 import org.exoplatform.social.core.storage.query.JCRProperties;
 import org.exoplatform.social.core.storage.query.WhereExpression;
+import org.exoplatform.social.core.storage.streams.StreamInvocationHelper;
 import org.exoplatform.social.core.storage.thread.SocialExecutorService;
 
 /**
@@ -73,6 +76,7 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
   private CachedActivityStorage cachedActivityStorage;
   private Object lock = new Object();
   private SocialExecutorService<String[]> executorService = new SocialExecutorService<String[]>(10);
+  private CachedActivityStreamStorage streamStorage;
 
   public RelationshipStorageImpl(IdentityStorage identityStorage) {
    this.identityStorage = identityStorage;
@@ -88,6 +92,16 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
     }
     
     return this.cachedActivityStorage;
+  }
+  
+  private CachedActivityStreamStorage getCachedActivityStreamStorage() {
+    
+    if (this.streamStorage == null) {
+      PortalContainer container = PortalContainer.getInstance();
+      this.streamStorage  = (CachedActivityStreamStorage) container.getComponentInstanceOfType(ActivityStreamStorage.class);
+    }
+    
+    return this.streamStorage;
   }
   
   private void putRelationshipToList(List<Relationship> relationships, RelationshipListEntity list) {
@@ -381,12 +395,14 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
         symmetricalRelationship.getParent().getParent().getRelationship().getRelationships()
             .put(symmetricalRelationship.getName(), symmetricalRelationship);
         
+        StreamInvocationHelper.connect(relationship.getSender(), relationship.getReceiver());
+        
         break;
       
       // TODO : IGNORED
     }
 
-    getSession().save();
+    //getSession().save();
 
     //
     LOG.debug(String.format(
@@ -593,9 +609,15 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       _removeById(RelationshipEntity.class, symmetricalRelationship.getId());
       _removeById(RelationshipEntity.class, relationship.getId());
       
-      getSession().save();
+      //getSession().save();
+      StorageUtils.persist();
+      
+      //getCachedActivityStreamStorage().deleteConnect(relationship.getSender(), relationship.getReceiver());
+      StreamInvocationHelper.deleteConnect(relationship.getSender(), relationship.getReceiver());
       
       getCachedActivityStorage().clearCache();
+      
+      
 
       //
       LOG.debug(String.format(
@@ -954,6 +976,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
   public List<Identity> getIncomingByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter, final long offset, final long limit)
       throws RelationshipStorageException {
+    //
+    if (profileFilter.isEmpty()) {
+      return StorageUtils.sortIdentitiesByFullName(getIncomingRelationships(existingIdentity, offset, limit), true);
+    }
 
     List<Identity> identities = getStorage().getIncomingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilter(identities, profileFilter, offset, limit);
@@ -967,6 +993,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       final Identity existingIdentity, final ProfileFilter profileFilter, final long offset, final long limit)
       throws RelationshipStorageException {
 
+    if (profileFilter.isEmpty()) {
+      return StorageUtils.sortIdentitiesByFullName(getOutgoingRelationships(existingIdentity, offset, limit), true);
+    }
+    
     List<Identity> identities = getStorage().getOutgoingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilter(identities, profileFilter, offset, limit);
 
@@ -976,6 +1006,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
    */
   public int getIncomingCountByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter) throws RelationshipStorageException {
+    
+    if (profileFilter.isEmpty()) {
+      return getIncomingRelationshipsCount(existingIdentity);
+    }
 
     List<Identity> identities = getStorage().getIncomingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilterCount(identities, profileFilter);
@@ -998,6 +1032,10 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
    */
   public int getOutgoingCountByFilter(
       final Identity existingIdentity, final ProfileFilter profileFilter) throws RelationshipStorageException {
+    
+    if (profileFilter.isEmpty()) {
+      return getOutgoingRelationshipsCount(existingIdentity);
+    }
 
     List<Identity> identities = getStorage().getOutgoingRelationships(existingIdentity, 0, -1);
     return getIdentitiesRelationsByFilterCount(identities, profileFilter);
@@ -1211,5 +1249,6 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
   public void setStorage(RelationshipStorage storage) {
     this.relationshipStorage = storage;
   }
+
 
 }

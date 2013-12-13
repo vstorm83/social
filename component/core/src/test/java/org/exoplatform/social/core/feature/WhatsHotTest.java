@@ -27,8 +27,10 @@ import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.manager.RelationshipManager;
 import org.exoplatform.social.core.manager.RelationshipManagerImpl;
 import org.exoplatform.social.core.relationship.model.Relationship;
+import org.exoplatform.social.core.space.SpaceUtils;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.impl.ActivityStorageImpl;
+import org.exoplatform.social.core.storage.impl.StorageUtils;
 import org.exoplatform.social.core.test.AbstractCoreTest;
 import org.exoplatform.social.core.test.MaxQueryNumber;
 
@@ -116,7 +118,7 @@ public class WhatsHotTest extends AbstractCoreTest {
     for (int i = 0; i < 5; ++i) {
       activityStorage.deleteActivity(it.next().getId());
     }
-
+    
     // fill 10 others
     for (int i = 0; i < 10; ++i) {
       ExoSocialActivity activity = new ExoSocialActivityImpl();
@@ -314,7 +316,8 @@ public class WhatsHotTest extends AbstractCoreTest {
     
     List<ExoSocialActivity> list = activityStorage.getActivities(demoIdentity, johnIdentity, 0, 10);
     
-    assertEquals(3, list.size());
+    //john view demo'as --> only activity posted by demo and john display
+    assertEquals(2, list.size());
     
     tearDownActivityList.addAll(list);
     relationshipManager.unregisterListener(publisher);
@@ -337,6 +340,11 @@ public class WhatsHotTest extends AbstractCoreTest {
     
     List<ExoSocialActivity> list = activityStorage.getActivities(demoIdentity, johnIdentity, 0, 10);
     
+    //only show activity (not comment) posted by demo
+    assertEquals(0, list.size());
+    
+    //john view root'as --> only show activity (not comment) posted by root
+    list = activityStorage.getActivities(rootIdentity, johnIdentity, 0, 10);
     assertEquals(2, list.size());
     
     tearDownActivityList.addAll(list);
@@ -364,7 +372,7 @@ public class WhatsHotTest extends AbstractCoreTest {
     
     List<ExoSocialActivity> list = activityStorage.getActivities(demoIdentity, johnIdentity, 0, 10);
     
-    assertEquals(4, list.size());
+    assertEquals(2, list.size());
     
     tearDownActivityList.addAll(list);
     relationshipManager.unregisterListener(publisher);
