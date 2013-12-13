@@ -46,6 +46,7 @@ import org.exoplatform.social.core.storage.cache.selector.ActivityOwnerCacheSele
 import org.exoplatform.social.core.storage.cache.selector.ScopeCacheSelector;
 import org.exoplatform.social.core.storage.impl.ActivityBuilderWhere;
 import org.exoplatform.social.core.storage.impl.ActivityStorageImpl;
+import org.exoplatform.social.core.storage.mysql.impl.ActivityMysqlStorageImpl;
 
 /**
  * @author <a href="mailto:alain.defrance@exoplatform.com">Alain Defrance</a>
@@ -65,6 +66,9 @@ public class CachedActivityStorage implements ActivityStorage {
   private final FutureExoCache<ListActivitiesKey, ListActivitiesData, ServiceContext<ListActivitiesData>> activitiesCache;
 
   private final ActivityStorageImpl storage;
+  
+  //storage for mysql implementation
+  private final ActivityMysqlStorageImpl mysqlStorage;
 
   public void clearCache() {
 
@@ -138,12 +142,16 @@ public class CachedActivityStorage implements ActivityStorage {
 
   }
 
-  public CachedActivityStorage(final ActivityStorageImpl storage, final SocialStorageCacheService cacheService) {
+  public CachedActivityStorage(final ActivityStorageImpl storage, final SocialStorageCacheService cacheService, final ActivityMysqlStorageImpl mystorage) {
 
     //
     this.storage = storage;
     this.storage.setStorage(this);
 
+    //for mysql
+    this.mysqlStorage = mystorage;
+    this.mysqlStorage.setStorage(this);
+    
     //
     this.exoActivityCache = cacheService.getActivityCache();
     this.exoActivitiesCountCache = cacheService.getActivitiesCountCache();
@@ -241,8 +249,8 @@ public class CachedActivityStorage implements ActivityStorage {
    */
   public ExoSocialActivity saveActivity(final Identity owner, final ExoSocialActivity activity) throws ActivityStorageException {
 
-    //
-    ExoSocialActivity a = storage.saveActivity(owner, activity);
+    //using Mysql implementation
+    ExoSocialActivity a = mysqlStorage.saveActivity(owner, activity);
 
     //
     ActivityKey key = new ActivityKey(a.getId());

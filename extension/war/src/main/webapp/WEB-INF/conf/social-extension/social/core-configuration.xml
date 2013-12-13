@@ -94,6 +94,11 @@
   </component>
 
   <component>
+    <key>org.exoplatform.social.core.storage.mysql.impl.ActivityMysqlStorageImpl</key>
+    <type>org.exoplatform.social.core.storage.mysql.impl.ActivityMysqlStorageImpl</type>
+  </component>
+  
+  <component>
     <key>org.exoplatform.social.core.storage.impl.ActivityStorageImpl</key>
     <type>org.exoplatform.social.core.storage.synchronization.SynchronizedActivityStorage</type>
   </component>
