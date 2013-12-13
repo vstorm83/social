@@ -20,11 +20,13 @@ package org.exoplatform.social.core.storage.mysql.impl;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -236,7 +238,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       dbConnection = getDBConnection();
       preparedStatement = dbConnection.prepareStatement(insertTableSQL);
  
-      preparedStatement.setString(1, activity.getId());
+      preparedStatement.setString(1, UUID.randomUUID().toString());
       preparedStatement.setString(2, activity.getTitle());
       preparedStatement.setString(3, activity.getTitleId());
       preparedStatement.setString(4, activity.getBody());
@@ -248,11 +250,16 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       preparedStatement.setString(10, activity.getPermaLink());
       preparedStatement.setString(11, activity.getAppId());
       preparedStatement.setString(12, activity.getExternalId());
-      preparedStatement.setFloat(13, activity.getPriority());
+      if(activity.getPriority() == null){
+        preparedStatement.setNull(13, Types.FLOAT);
+      }else{
+        preparedStatement.setFloat(13, activity.getPriority());
+      }
       preparedStatement.setBoolean(14, activity.isHidden());
       preparedStatement.setBoolean(15, activity.isLocked());
       preparedStatement.setString(16, StringUtils.join(activity.getLikeIdentityIds(),","));
       //TODO add metadata
+      preparedStatement.setString(17, null);
       
       preparedStatement.executeUpdate();
  
