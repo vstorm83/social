@@ -19,11 +19,17 @@ package org.exoplatform.social.core.storage.mysql.impl;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -33,6 +39,7 @@ import java.util.regex.Pattern;
 import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemExistsException;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.Validate;
@@ -46,6 +53,7 @@ import org.exoplatform.social.core.activity.filter.ActivityUpdateFilter;
 import org.exoplatform.social.core.activity.model.ActivityStream;
 import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
+import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
 import org.exoplatform.social.core.chromattic.entity.HidableEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
@@ -61,6 +69,7 @@ import org.exoplatform.social.core.storage.api.ActivityStreamStorage;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.api.RelationshipStorage;
 import org.exoplatform.social.core.storage.api.SpaceStorage;
+import org.exoplatform.social.core.storage.cache.model.key.ActivityType;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 import org.exoplatform.social.core.storage.impl.ActivityBuilderWhere;
 import org.exoplatform.social.core.storage.impl.StorageUtils;
@@ -109,10 +118,118 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public ExoSocialActivity getActivity(String activityId)
 			throws ActivityStorageException {
-		// TODO Auto-generated method stub
-		return null;
+
+      //
+      //ActivityEntity activityEntity = _findById(ActivityEntity.class, activityId);
+	    Connection dbConnection = null;
+	    PreparedStatement preparedStatement = null;
+	    ResultSet rs = null;
+	    
+	    String getActivitySQL = "select "
+	    +"_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,"
+	    +"permaLink, appId, externalId, priority, hidable, lockable, likers, metadata"
+	    +" from activity where _id = ?";
+	    
+	    ExoSocialActivity activity = new ExoSocialActivityImpl();
+	    
+	    try {
+	      dbConnection = getDBConnection();
+	      preparedStatement = dbConnection.prepareStatement(getActivitySQL);
+	      preparedStatement.setString(1, activityId);
+	      
+	      rs = preparedStatement.executeQuery();
+	      
+	      while(rs.next()){
+	        fillActivityFromResultSet(rs, activity);
+	      }
+	      
+	      processActivity(activity);
+
+
+        LOG.debug("activity found");
+        
+	      return activity;
+	      
+	    } catch (SQLException e) {
+	 
+	      LOG.debug("error in activity look up:", e.getMessage());
+	      return null;
+	 
+	    } finally {
+	      try {
+	        if (rs != null) {
+            rs.close();
+          }
+	        
+	        if (preparedStatement != null) {
+	          preparedStatement.close();
+	        }
+	        
+	        if (dbConnection != null) {
+	          dbConnection.close();
+	        }
+	      } catch (SQLException e) {
+	        LOG.debug("Cannot close statement or connection:", e.getMessage());
+	      }
+	    }
 	}
 
+  private void fillActivityFromResultSet(ResultSet rs, ExoSocialActivity activity) throws SQLException{
+
+    activity.setId(rs.getString("_id"));
+    activity.setTitle(rs.getString("title"));
+    activity.setTitleId(rs.getString("titleId"));
+    activity.setBody(rs.getString("body"));
+    activity.setBodyId(rs.getString("bodyId"));
+    activity.setUserId(rs.getString("posterId"));
+    activity.setPostedTime(rs.getLong("postedTime"));
+    activity.setUpdated(rs.getLong("lastUpdated"));
+    //activity.setType(activityEntity.getType());
+    activity.setAppId(rs.getString("appId"));
+    activity.setExternalId(rs.getString("externalId"));
+    //activity.setUrl(activityEntity.getUrl());
+    activity.setPriority(rs.getFloat("priority"));
+    if (rs.wasNull()) {
+      activity.setPriority(null);
+    }
+    activity.setPosterId(rs.getString("posterId"));
+
+    /*
+    List<String> computeCommentid = new ArrayList<String>();
+    for (ActivityEntity commentEntity : activityEntity.getComments()) {
+      computeCommentid.add(commentEntity.getId());
+    }
+
+    activity.setReplyToId(computeCommentid.toArray(new String[]{}));*/
+    
+    String lks = rs.getString("likers");
+    String[] likes = StringUtils.split(lks, ",");
+    if (likes != null) {
+      activity.setLikeIdentityIds(likes);
+    }
+    
+    //mentioners and commenters are moved to StreamItem
+    
+    //
+    activity.isLocked(rs.getBoolean("lockable"));
+    activity.isHidden(rs.getBoolean("hidable"));
+
+    activity.setStreamOwner(rs.getString("ownerId"));
+    //TODO
+    //fillStream(null, activity);
+  }
+  
+  private void processActivity(ExoSocialActivity existingActivity) {
+    Iterator<ActivityProcessor> it = activityProcessors.iterator();
+    while (it.hasNext()) {
+      try {
+        it.next().processActivity(existingActivity);
+      } catch (Exception e) {
+        LOG.warn("activity processing failed " + e.getMessage());
+      }
+    }
+  }
+  
 	@Override
 	public List<ExoSocialActivity> getUserActivities(Identity owner)
 			throws ActivityStorageException {
@@ -217,7 +334,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     
     IdentityEntity identityEntity = _findById(IdentityEntity.class, owner.getId());
 
-    IdentityEntity posterIdentityEntity;
+    IdentityEntity posterIdentityEntity = null;
     if (activity.getUserId() != null) {
       posterIdentityEntity = _findById(IdentityEntity.class, activity.getUserId());
     }
@@ -238,15 +355,16 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       dbConnection = getDBConnection();
       preparedStatement = dbConnection.prepareStatement(insertTableSQL);
  
-      preparedStatement.setString(1, UUID.randomUUID().toString());
+      activity.setId(UUID.randomUUID().toString());
+      preparedStatement.setString(1, activity.getId());
       preparedStatement.setString(2, activity.getTitle());
       preparedStatement.setString(3, activity.getTitleId());
       preparedStatement.setString(4, activity.getBody());
       preparedStatement.setString(5, activity.getBodyId());
       preparedStatement.setLong(6, activity.getPostedTime());
       preparedStatement.setLong(7, activity.getUpdated().getTime());
-      preparedStatement.setString(8, activity.getPosterId());
-      preparedStatement.setString(9, activity.getUserId() != null ? activity.getUserId() : owner.getId());
+      preparedStatement.setString(8, activity.getUserId() != null ? activity.getUserId() : owner.getId());
+      preparedStatement.setString(9, owner.getRemoteId());
       preparedStatement.setString(10, activity.getPermaLink());
       preparedStatement.setString(11, activity.getAppId());
       preparedStatement.setString(12, activity.getExternalId());
@@ -284,27 +402,11 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     }
     //end of insertion
     
-    /*
-    // Get ActivityList
-    ActivityListEntity activityListEntity = identityEntity.getActivityList();
-
-    //
-    Collection<ActivityEntity> entities = new ActivityList(activityListEntity);
-
     // Create activity
     long currentMillis = System.currentTimeMillis();
     long activityMillis = (activity.getPostedTime() != null ? activity.getPostedTime() : currentMillis);
-    ActivityEntity activityEntity = activityListEntity.createActivity(String.valueOf(activityMillis));
-    entities.add(activityEntity);
-    activityEntity.setIdentity(identityEntity);
-    activityEntity.setComment(Boolean.FALSE);
-    activityEntity.setPostedTime(activityMillis);
-    activityEntity.setLastUpdated(activityMillis);
-    activityEntity.setPosterIdentity(posterIdentityEntity);
-    
 
     // Fill activity model
-    activity.setId(activityEntity.getId());
     activity.setStreamOwner(identityEntity.getRemoteId());
     activity.setPostedTime(activityMillis);
     activity.setReplyToId(new String[]{});
@@ -318,9 +420,72 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     activity.setPosterId(activity.getUserId() != null ? activity.getUserId() : owner.getId());
       
     //
-    fillActivityEntityFromActivity(activity, activityEntity);
-    return mentioners.toArray(new String[0]);*/
+    //fillStream(null, activity);
+    newStreamItemForNewActivity(owner, activity);
+    
     return null;
+  }
+  
+  private void newStreamItemForNewActivity(Identity poster, ExoSocialActivity activity) {
+    //create StreamItem
+    if (OrganizationIdentityProvider.NAME.equals(poster.getProviderId())) {
+      //poster
+      poster(poster, activity);
+      //connection
+      //connection(poster, activity);
+      //mention
+      //mention(poster, activity, activity.getMentionedIds());
+    } else {
+      //for SPACE
+      //spaceMembers(poster, activity);
+    }
+  }
+  
+  private void poster(Identity poster, ExoSocialActivity activity){
+    //insert to mysql stream_item table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+ 
+    String insertTableSQL = "INSERT INTO stream_item"
+    +"(_id, activityId, ownerId, posterId, viewerId, viewerType,"
+    +"hidable, lockable, time)"
+    +"VALUES (?,?,?,?,?,?,?,?,?)";
+    
+    try {
+      dbConnection = getDBConnection();
+      preparedStatement = dbConnection.prepareStatement(insertTableSQL);
+      preparedStatement.setString(1, UUID.randomUUID().toString());
+      preparedStatement.setString(2, activity.getId());
+      preparedStatement.setString(3, poster.getRemoteId());
+      preparedStatement.setString(4, activity.getUserId() != null ? activity.getUserId() : poster.getId());
+      preparedStatement.setString(5, poster.getId());
+      preparedStatement.setString(6, "POSTER");
+      preparedStatement.setBoolean(7, activity.isHidden());
+      preparedStatement.setBoolean(8, activity.isLocked());
+      preparedStatement.setLong(9, activity.getPostedTime());
+      
+      preparedStatement.executeUpdate();
+ 
+      LOG.debug("new stream item created");
+ 
+    } catch (SQLException e) {
+ 
+      LOG.debug("error in stream item creation:", e.getMessage());
+ 
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+        
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.debug("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+    
   }
   
   protected void _saveActivity(ExoSocialActivity activity) throws NodeNotFoundException {
@@ -367,6 +532,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       activityEntity.putParams(params);
     }
 
+    
     //
     fillStream(activityEntity, activity);
     
@@ -385,9 +551,10 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       }
       IdentityEntity streamOwnerEntity = _findById(IdentityEntity.class, streamOwnerIdentity.getId());
       identityEntity = streamOwnerEntity;
-      activityEntity.setIdentity(streamOwnerEntity);
+      //activityEntity.setIdentity(streamOwnerEntity);
     } catch (Exception e) {
-      identityEntity = activityEntity.getIdentity();
+      LOG.debug("Exception in stream owner identification");
+      //identityEntity = activityEntity.getIdentity();
     }
     //
     stream.setId(identityEntity.getId());
@@ -585,15 +752,101 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public List<ExoSocialActivity> getActivityFeed(Identity ownerIdentity,
 			int offset, int limit) {
-		// TODO Auto-generated method stub
-		return null;
+	  return getActivityFeedForUpgrade(ownerIdentity, offset, limit);
 	}
 
 	@Override
 	public List<ExoSocialActivity> getActivityFeedForUpgrade(
 			Identity ownerIdentity, int offset, int limit) {
-		// TODO Auto-generated method stub
-		return null;
+	  
+	  Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
+    
+    //get spaces where user is member
+    List<Space> spaces = spaceStorage.getMemberSpaces(ownerIdentity.getRemoteId());
+    String[] spaceIds = new String[0];
+    for (Space space : spaces) {
+      spaceIds = (String[]) ArrayUtils.add(spaceIds, space.getPrettyName());
+    }
+    
+    List<Identity> relationships = relationshipStorage.getConnections(ownerIdentity);
+    
+    Set<String> relationshipIds = new HashSet<String>();
+    for (Identity identity : relationships) {
+      relationshipIds.add(identity.getId());
+    }
+    
+    StringBuilder sql = new StringBuilder();
+    sql.append("select ")
+       .append("_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,")
+       .append("permaLink, appId, externalId, priority, hidable, lockable, likers, metadata")
+       .append(" from activity where _id in (select distinct activityId from stream_item where ")
+       .append(" (viewerId = ? ");
+    
+    if(CollectionUtils.isNotEmpty(spaces)){
+      sql.append("or ownerId in ( ").append(StringUtils.join(spaceIds, ",")).append(") ");
+    }
+    
+    if(CollectionUtils.isNotEmpty(relationships)){
+      sql.append("or posterId in ( ").append(StringUtils.join(relationshipIds, ",")).append(") ");
+    }
+    
+    sql.append(")");
+    
+    long sinceTime = getStorage().getSinceTime(ownerIdentity, offset, ActivityType.FEED);
+    if (sinceTime > 0) {
+      sql.append(" and time < ?");
+    }
+    
+    sql.append(" order by time desc)");
+    
+    List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
+    
+    try {
+      dbConnection = getDBConnection();
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, ownerIdentity.getId());
+      
+      if (sinceTime > 0) {
+        preparedStatement.setLong(2, sinceTime);
+      }
+      
+      rs = preparedStatement.executeQuery();
+      
+      while(rs.next() && result.size() < limit){
+        ExoSocialActivity activity = new ExoSocialActivityImpl();
+        fillActivityFromResultSet(rs, activity);
+        result.add(activity);
+      }
+      
+      LOG.debug("getActivityFeed size = "+ result.size());
+      
+      return result;
+      
+    } catch (SQLException e) {
+ 
+      LOG.debug("error in activity look up:", e.getMessage());
+      return null;
+ 
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+        
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+        
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.debug("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+	  
 	}
 
 	@Override
@@ -756,8 +1009,23 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public List<ExoSocialActivity> getComments(
 			ExoSocialActivity existingActivity, int offset, int limit) {
-		// TODO Auto-generated method stub
-		return null;
+    /*DBCollection activityColl = CollectionName.COMMENT_COLLECTION.getCollection(this);
+    BasicDBObject query = new BasicDBObject(CommentMongoEntity.activityId.getName(), existingActivity.getId());
+
+    DBCursor cur = activityColl.find(query);*/
+    List<ExoSocialActivity> result = new ArrayList<ExoSocialActivity>();
+    /*while (cur.hasNext()) {
+      BasicDBObject entity = (BasicDBObject) cur.next();
+      ExoSocialActivity activity = new ExoSocialActivityImpl();
+      fillActivity(activity, entity);
+      activity.isComment(true);
+      
+      processActivity(activity);
+      result.add(activity);
+    }*/
+    LOG.debug("=======>getComments SIZE ="+ result.size());
+    
+    return result;
 	}
 
 	@Override
@@ -798,8 +1066,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 
 	@Override
 	public SortedSet<ActivityProcessor> getActivityProcessors() {
-		// TODO Auto-generated method stub
-		return null;
+	  return activityProcessors;
 	}
 
 	@Override

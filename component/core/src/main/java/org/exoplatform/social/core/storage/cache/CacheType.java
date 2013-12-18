@@ -49,6 +49,7 @@ public enum CacheType {
   ACTIVITY("ActivityCache"),
   ACTIVITIES_COUNT("ActivitiesCountCache"),
   ACTIVITIES("ActivitiesCache"),
+  ACTIVITY_SINCE_TIME("ActivitySinceTimeCache"),
   
   //
   ACTIVITY_REF("ActivityRefCache"),
