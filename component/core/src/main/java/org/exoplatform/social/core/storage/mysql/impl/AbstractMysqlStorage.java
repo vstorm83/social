@@ -20,6 +20,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
+
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.social.core.storage.impl.AbstractStorage;
@@ -58,5 +63,26 @@ public class AbstractMysqlStorage extends AbstractStorage {
     }
 
     return dbConnection;
+  }
+  
+  Connection getJNDIConnection() {
+    String DATASOURCE_CONTEXT = "exo-mysql-activity";
+
+    Connection result = null;
+    try {
+      Context initContext = new InitialContext();
+      Context envContext  = (Context)initContext.lookup("java:/comp/env");
+      DataSource datasource = (DataSource)envContext.lookup(DATASOURCE_CONTEXT);
+      if (datasource != null) {
+        result = datasource.getConnection();
+      } else {
+        LOG.error("Failed to lookup datasource.");
+      }
+    } catch (NamingException ex) {
+      LOG.error("Cannot get connection: " + ex);
+    } catch (SQLException ex) {
+      LOG.error("Cannot get connection: " + ex);
+    }
+    return result;
   }
 }
