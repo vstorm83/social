@@ -117,62 +117,63 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 
 	@Override
 	public ExoSocialActivity getActivity(String activityId)
-			throws ActivityStorageException {
+ throws ActivityStorageException {
 
-      //
-      //ActivityEntity activityEntity = _findById(ActivityEntity.class, activityId);
-	    Connection dbConnection = null;
-	    PreparedStatement preparedStatement = null;
-	    ResultSet rs = null;
-	    
-	    String getActivitySQL = "select "
-	    +"_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,"
-	    +"permaLink, appId, externalId, priority, hidable, lockable, likers, metadata"
-	    +" from activity where _id = ?";
-	    
-	    ExoSocialActivity activity = new ExoSocialActivityImpl();
-	    
-	    try {
-	      dbConnection = getDBConnection();
-	      preparedStatement = dbConnection.prepareStatement(getActivitySQL);
-	      preparedStatement.setString(1, activityId);
-	      
-	      rs = preparedStatement.executeQuery();
-	      
-	      while(rs.next()){
-	        fillActivityFromResultSet(rs, activity);
-	      }
-	      
-	      processActivity(activity);
+    //
+    // ActivityEntity activityEntity = _findById(ActivityEntity.class,
+    // activityId);
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
 
+    StringBuilder getActivitySQL = new StringBuilder();
+    getActivitySQL.append("select ")
+                  .append("_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,")
+                  .append("permaLink, appId, externalId, priority, hidable, lockable, likers, metadata")
+                  .append(" from activity where _id = ?");
 
-        LOG.debug("activity found");
-        
-	      return activity;
-	      
-	    } catch (SQLException e) {
-	 
-	      LOG.debug("error in activity look up:", e.getMessage());
-	      return null;
-	 
-	    } finally {
-	      try {
-	        if (rs != null) {
-            rs.close();
-          }
-	        
-	        if (preparedStatement != null) {
-	          preparedStatement.close();
-	        }
-	        
-	        if (dbConnection != null) {
-	          dbConnection.close();
-	        }
-	      } catch (SQLException e) {
-	        LOG.debug("Cannot close statement or connection:", e.getMessage());
-	      }
-	    }
-	}
+    ExoSocialActivity activity = new ExoSocialActivityImpl();
+
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(getActivitySQL.toString());
+      preparedStatement.setString(1, activityId);
+
+      rs = preparedStatement.executeQuery();
+
+      while (rs.next()) {
+        fillActivityFromResultSet(rs, activity);
+      }
+
+      processActivity(activity);
+
+      LOG.debug("activity found");
+
+      return activity;
+
+    } catch (SQLException e) {
+
+      LOG.debug("error in activity look up:", e.getMessage());
+      return null;
+
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.debug("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+  }
 
   private void fillActivityFromResultSet(ResultSet rs, ExoSocialActivity activity) throws SQLException{
 
@@ -346,14 +347,15 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     Connection dbConnection = null;
     PreparedStatement preparedStatement = null;
  
-    String insertTableSQL = "INSERT INTO activity"
-    +"(_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,"
-    +"permaLink, appId, externalId, priority, hidable, lockable, likers, metadata)"
-    +"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    StringBuilder insertTableSQL = new StringBuilder();
+    insertTableSQL.append("INSERT INTO activity")
+                  .append("(_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,")
+                  .append("permaLink, appId, externalId, priority, hidable, lockable, likers, metadata)")
+                  .append("VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     
     try {
-      dbConnection = getDBConnection();
-      preparedStatement = dbConnection.prepareStatement(insertTableSQL);
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(insertTableSQL.toString());
  
       activity.setId(UUID.randomUUID().toString());
       preparedStatement.setString(1, activity.getId());
@@ -446,14 +448,15 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     Connection dbConnection = null;
     PreparedStatement preparedStatement = null;
  
-    String insertTableSQL = "INSERT INTO stream_item"
-    +"(_id, activityId, ownerId, posterId, viewerId, viewerType,"
-    +"hidable, lockable, time)"
-    +"VALUES (?,?,?,?,?,?,?,?,?)";
+    StringBuilder insertTableSQL = new StringBuilder();
+    insertTableSQL.append("INSERT INTO stream_item")
+                  .append("(_id, activityId, ownerId, posterId, viewerId, viewerType,")
+                  .append("hidable, lockable, time)")
+                  .append("VALUES (?,?,?,?,?,?,?,?,?)");
     
     try {
-      dbConnection = getDBConnection();
-      preparedStatement = dbConnection.prepareStatement(insertTableSQL);
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(insertTableSQL.toString());
       preparedStatement.setString(1, UUID.randomUUID().toString());
       preparedStatement.setString(2, activity.getId());
       preparedStatement.setString(3, poster.getRemoteId());
@@ -804,7 +807,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     
     try {
-      dbConnection = getDBConnection();
+      dbConnection = getJNDIConnection();
       preparedStatement = dbConnection.prepareStatement(sql.toString());
       preparedStatement.setString(1, ownerIdentity.getId());
       
