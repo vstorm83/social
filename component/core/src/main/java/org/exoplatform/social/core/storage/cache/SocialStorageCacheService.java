@@ -59,7 +59,8 @@ public class SocialStorageCacheService {
   private final ExoCache<IdentityKey, ProfileData> profileCache;
   private final ExoCache<IdentityFilterKey, IntegerData> countIdentitiesCache;
   private final ExoCache<ListIdentitiesKey, ListIdentitiesData> identitiesCache;
-
+  private final ExoCache<ActivityCountKey, Long> activitySinceTimeCache;
+  
   // RelationshipStorage
   private final ExoCache<RelationshipKey, RelationshipData> relationshipCache;
   private final ExoCache<RelationshipIdentityKey, RelationshipKey> relationshipCacheByIdentity;
@@ -107,7 +108,7 @@ public class SocialStorageCacheService {
     this.spacesCache = CacheType.SPACES.getFromService(cacheService);
     
     this.spaceSimpleCache = CacheType.SPACE_SIMPLE.getFromService(cacheService);
-
+    this.activitySinceTimeCache = CacheType.ACTIVITY_SINCE_TIME.getFromService(cacheService);
   }
 
   public ExoCache<IdentityKey, IdentityData> getIdentityCache() {
@@ -180,5 +181,9 @@ public class SocialStorageCacheService {
 
   public ExoCache<ListSpacesKey, ListSpacesData> getSpacesCache() {
     return spacesCache;
+  }
+  
+  public ExoCache<ActivityCountKey, Long> getActivitySinceTimeCache() {
+    return activitySinceTimeCache;
   }
 }

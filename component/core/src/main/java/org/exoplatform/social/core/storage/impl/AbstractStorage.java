@@ -35,6 +35,9 @@ import org.exoplatform.services.log.Log;
 import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
 import org.exoplatform.social.core.chromattic.entity.ProviderRootEntity;
 import org.exoplatform.social.core.chromattic.entity.SpaceRootEntity;
+import org.exoplatform.social.core.identity.model.Identity;
+import org.exoplatform.social.core.storage.ActivityStorageException;
+import org.exoplatform.social.core.storage.cache.model.key.ActivityType;
 import org.exoplatform.social.core.storage.exception.NodeNotFoundException;
 
 /**
@@ -276,6 +279,10 @@ public abstract class AbstractStorage {
     ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
     return (SocialChromatticLifeCycle) manager.getLifeCycle(SocialChromatticLifeCycle.SOCIAL_LIFECYCLE_NAME);
 
+  }
+
+  public long getSinceTime(Identity owner, long offset, ActivityType type) throws ActivityStorageException{
+    return 0;
   }
   
 }
