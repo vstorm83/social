@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,6 +55,8 @@ import org.exoplatform.social.core.activity.model.ActivityStream;
 import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
+import org.exoplatform.social.core.activity.mysql.model.StreamItem;
+import org.exoplatform.social.core.activity.mysql.model.StreamItemImpl;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
 import org.exoplatform.social.core.chromattic.entity.HidableEntity;
 import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
@@ -86,6 +89,21 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 
   private static final Pattern MENTION_PATTERN = Pattern.compile("@([^\\s]+)|@([^\\s]+)$");
   public static final Pattern USER_NAME_VALIDATOR_REGEX = Pattern.compile("^[\\p{L}][\\p{L}._\\-\\d]+$");
+  
+  public enum ViewerType {
+    SPACE("SPACE"), POSTER("POSTER"), LIKE("LIKE"), COMMENTER("COMMENTER"), MENTIONER("MENTIONER"), SPACE_MEMBER(
+        "SPACE_MEMBER");
+
+    private final String type;
+
+    public String getType() {
+      return type;
+    }
+
+    ViewerType(String type) {
+      this.type = type;
+    }
+  }
   
   private final SortedSet<ActivityProcessor> activityProcessors;
   private final RelationshipStorage relationshipStorage;
@@ -153,7 +171,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 
     } catch (SQLException e) {
 
-      LOG.debug("error in activity look up:", e.getMessage());
+      LOG.error("error in activity look up:", e.getMessage());
       return null;
 
     } finally {
@@ -170,7 +188,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
           dbConnection.close();
         }
       } catch (SQLException e) {
-        LOG.debug("Cannot close statement or connection:", e.getMessage());
+        LOG.error("Cannot close statement or connection:", e.getMessage());
       }
     }
   }
@@ -260,13 +278,351 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 		return null;
 	}
 
-	@Override
-	public void saveComment(ExoSocialActivity activity,
-			ExoSocialActivity comment) throws ActivityStorageException {
-		// TODO Auto-generated method stub
+  @Override
+  public void saveComment(ExoSocialActivity activity, ExoSocialActivity comment) throws ActivityStorageException {
 
-	}
+    LOG.debug("begin to create comment");
 
+    // insert to mysql comment table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+
+    StringBuilder insertTableSQL = new StringBuilder();
+    insertTableSQL.append("INSERT INTO comment")
+                  .append("(_id, activityId, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ")
+                  .append("hidable, lockable)")
+                  .append("VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+
+    StringBuilder updateActivitySQL = new StringBuilder();
+    updateActivitySQL.append("update activity set lastUpdated = ? where _id = ?");
+
+    long currentMillis = System.currentTimeMillis();
+    long commentMillis = (comment.getPostedTime() != null ? comment.getPostedTime() : currentMillis);
+
+    try {
+      dbConnection = getJNDIConnection();
+
+      // insert comment
+      preparedStatement = dbConnection.prepareStatement(insertTableSQL.toString());
+
+      comment.setId(UUID.randomUUID().toString());
+      preparedStatement.setString(1, comment.getId());
+      preparedStatement.setString(2, activity.getId());
+      preparedStatement.setString(3, comment.getTitle());
+      preparedStatement.setString(4, comment.getTitleId());
+      preparedStatement.setString(5, comment.getBody());
+      preparedStatement.setString(6, comment.getBodyId());
+      preparedStatement.setLong(7, commentMillis);
+      preparedStatement.setLong(8, commentMillis);
+      preparedStatement.setString(9, comment.getUserId());
+      preparedStatement.setBoolean(10, activity.isHidden());
+      preparedStatement.setBoolean(11, activity.isLocked());
+
+      preparedStatement.executeUpdate();
+
+      LOG.debug("new comment created");
+
+      // update activity
+      preparedStatement = dbConnection.prepareStatement(updateActivitySQL.toString());
+      preparedStatement.setLong(1, commentMillis);
+      preparedStatement.setString(2, activity.getId());
+
+      preparedStatement.executeUpdate();
+
+      LOG.debug("activity updated");
+
+    } catch (SQLException e) {
+
+      LOG.error("error in comment creation:", e.getMessage());
+
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+
+    comment.setUpdated(commentMillis);
+
+    Identity poster = new Identity(activity.getPosterId());
+    poster.setRemoteId(activity.getStreamOwner());
+
+    commenter(poster, activity, comment);
+
+    // TODO update mentionner
+    updateMentioner(poster, activity, comment);
+
+  }
+
+  /**
+   * Creates StreamItem for each user who commented on the activity
+   * 
+   * @param poster poster of activity
+   * @param activity
+   * @param comment
+   * @throws MongoException
+   */
+  private void commenter(Identity poster, ExoSocialActivity activity, ExoSocialActivity comment) {
+    StreamItem o = getStreamItem(activity.getId(), comment.getUserId());
+    
+    if (o == null) {
+      // create new stream item for COMMENTER
+      createStreamItem(activity.getId(),
+                       poster.getRemoteId(),
+                       activity.getUserId() != null ? activity.getUserId() : poster.getId(),
+                       comment.getUserId(),
+                       ViewerType.COMMENTER.getType(),
+                       activity.isHidden(),
+                       activity.isLocked(),
+                       comment.getUpdated().getTime());
+      
+    } else {
+      //update COMMENTER
+      if (StringUtils.isBlank(o.getViewerType())) {
+        //add new commenter on this stream item
+        updateStreamItemWithComment(o.getId(), ViewerType.COMMENTER.getType(), 1, comment.getUpdated().getTime());
+      } else {
+        String[] viewTypes = o.getViewerType().split(",");
+        
+        if(ArrayUtils.contains(viewTypes, ViewerType.COMMENTER.getType())){
+          //increment only number of commenter
+          updateStreamItemWithComment(o.getId(), o.getViewerType(), o.getCommenter() + 1, comment.getUpdated().getTime());
+        } else {
+          //add new COMMENTER element to viewerTypes field
+          updateStreamItemWithComment(o.getId(), o.getViewerType() + "," + ViewerType.COMMENTER.getType(), 1, comment.getUpdated().getTime());
+        }
+      }
+    }
+    
+  }
+  
+  private void updateMentioner(Identity poster,
+                               ExoSocialActivity activity,
+                               ExoSocialActivity comment) {
+
+    String[] mentionIds = processMentions(comment.getTitle());
+
+    for (String mentioner : mentionIds) {
+      //
+      StreamItem entity = getStreamItem(activity.getId(), mentioner);
+      if (entity == null) {
+        createStreamItem(activity.getId(),
+                         poster.getRemoteId(),
+                         activity.getUserId() != null ? activity.getUserId() : poster.getId(),
+                         poster.getId(),
+                         ViewerType.MENTIONER.getType(),
+                         activity.isHidden(),
+                         activity.isLocked(),
+                         activity.getPostedTime());
+      } else {
+        // update mention
+        updateMention(entity, mentioner, comment);
+      }
+    }
+
+  }
+  
+  private void updateMention(StreamItem entity, String mentionId, ExoSocialActivity comment) {
+    //
+    String mentionType = ViewerType.MENTIONER.getType();
+    int actionNum = 0;
+    String viewerTypes = null;
+    String viewerId = null;
+    if (StringUtils.isBlank(entity.getViewerType())) {
+      //viewerType = MENTIONER + commenter = 1 + viewerId = mentionId
+      actionNum = 1;
+      viewerTypes = ViewerType.MENTIONER.getType();
+      viewerId = mentionId;
+    } else {
+      String[] arrViewTypes = entity.getViewerType().split(",");
+
+      if (ArrayUtils.contains(arrViewTypes, mentionType)) {
+        // increase number by 1
+        actionNum = entity.getMentioner() + 1;
+        viewerTypes = entity.getViewerType();
+      } else {
+        // add new type MENTIONER to arrViewTypes
+        arrViewTypes = (String[]) ArrayUtils.add(arrViewTypes, mentionType);
+        viewerTypes = StringUtils.join(arrViewTypes, ",");
+      }
+
+      // update mentionner
+    }
+    
+    //update time comment.getUpdated().getTime()
+    updateStreamItemWithComment(entity.getId(), viewerTypes, viewerId, actionNum, comment.getUpdated().getTime());
+  }
+  
+  /**
+   * update stream item's comment info
+   */
+  private void updateStreamItemWithComment(String id, String viewerTypes, Integer commenterNum, Long time) {
+    //insert to mysql stream_item table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+ 
+    StringBuilder insertTableSQL = new StringBuilder();
+    insertTableSQL.append("update stream_item")
+                  .append(" set viewerType = ?, commenter =?, time = ?")
+                  .append(" where _id = ?");
+    
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(insertTableSQL.toString());
+      preparedStatement.setString(1, viewerTypes);
+      preparedStatement.setInt(2, commenterNum);
+      preparedStatement.setLong(3, time);
+      preparedStatement.setString(4, id);
+      
+      preparedStatement.executeUpdate();
+ 
+      LOG.debug("stream item updated");
+ 
+    } catch (SQLException e) {
+ 
+      LOG.error("error in stream item update:", e.getMessage());
+ 
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+        
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+  }
+  
+  /**
+   * update stream item's comment info
+   */
+  private void updateStreamItemWithComment(String id, String viewerTypes, String viewerId, Integer commenterNum, Long time) {
+    //insert to mysql stream_item table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+ 
+    StringBuilder insertTableSQL = new StringBuilder();
+    insertTableSQL.append("update stream_item")
+                  .append(" set viewerType = ?, viewerId = ?, commenter =?, time = ?")
+                  .append(" where _id = ?");
+    
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(insertTableSQL.toString());
+      preparedStatement.setString(1, viewerTypes);
+      preparedStatement.setString(2, viewerId);
+      preparedStatement.setInt(3, commenterNum);
+      preparedStatement.setLong(4, time);
+      preparedStatement.setString(5, id);
+      
+      preparedStatement.executeUpdate();
+ 
+      LOG.debug("stream item updated");
+ 
+    } catch (SQLException e) {
+ 
+      LOG.error("error in stream item update:", e.getMessage());
+ 
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+        
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+  }
+  
+  /**
+   * get a stream item by activity, viewer and type
+   */
+  private StreamItem getStreamItem(String activityId, String viewerId) {
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
+
+    StringBuilder getActivitySQL = new StringBuilder();
+    getActivitySQL.append("select ")
+                  .append("_id, activityId, ownerId, posterId, viewerId, viewerType, hidable, lockable, time, mentioner, commenter")
+                  .append(" from stream_item where activityId = ? and viewerId = ?");
+
+    StreamItem item = null;
+
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(getActivitySQL.toString());
+      preparedStatement.setString(1, activityId);
+      preparedStatement.setString(2, viewerId);
+
+      rs = preparedStatement.executeQuery();
+
+      while (rs.next()) {
+        item = fillStreamItemFromResultSet(rs);
+      }
+
+      LOG.debug("stream item found");
+
+      return item;
+
+    } catch (SQLException e) {
+
+      LOG.error("error in stream item look up:", e.getMessage());
+      return null;
+
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+  }
+  
+  /**
+   * fill in StreamItem object from ResultSet
+   */
+  private StreamItem fillStreamItemFromResultSet(ResultSet rs) throws SQLException{
+    StreamItem item = new StreamItemImpl();
+    item.setId(rs.getString("_id"));
+    item.setActivityId(rs.getString("activityId"));
+    item.setOwnerId(rs.getString("ownerId"));
+    item.setPosterId(rs.getString("posterId"));
+    item.setViewerId(rs.getString("viewerId"));
+    item.setViewerType(rs.getString("viewerType"));
+    item.setHidable(rs.getBoolean("hidable"));
+    item.setLockable(rs.getBoolean("lockable"));
+    item.setTime(rs.getLong("time"));
+    item.setMentioner(rs.getInt("mentioner"));
+    item.setCommenter(rs.getInt("commenter"));
+    return item;
+  }
+  
 	@Override
 	public ExoSocialActivity saveActivity(Identity owner,
 			ExoSocialActivity activity) throws ActivityStorageException {
@@ -387,7 +743,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
  
     } catch (SQLException e) {
  
-      LOG.debug("error in activity creation:", e.getMessage());
+      LOG.error("error in activity creation:", e.getMessage());
  
     } finally {
       try {
@@ -399,7 +755,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
           dbConnection.close();
         }
       } catch (SQLException e) {
-        LOG.debug("Cannot close statement or connection:", e.getMessage());
+        LOG.error("Cannot close statement or connection:", e.getMessage());
       }
     }
     //end of insertion
@@ -443,7 +799,19 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     }
   }
   
-  private void poster(Identity poster, ExoSocialActivity activity){
+  private void poster(Identity poster, ExoSocialActivity activity) {
+    createStreamItem(activity.getId(),
+                     poster.getRemoteId(),
+                     activity.getUserId() != null ? activity.getUserId() : poster.getId(),
+                     poster.getId(),
+                     ViewerType.POSTER.getType(),
+                     activity.isHidden(),
+                     activity.isLocked(),
+                     activity.getPostedTime());
+  }
+                                
+  private void createStreamItem(String activityId, String ownerId, String posterId, String viewerId, 
+                                String viewerType, Boolean hidable, Boolean lockable, Long time){
     //insert to mysql stream_item table
     Connection dbConnection = null;
     PreparedStatement preparedStatement = null;
@@ -458,14 +826,14 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       dbConnection = getJNDIConnection();
       preparedStatement = dbConnection.prepareStatement(insertTableSQL.toString());
       preparedStatement.setString(1, UUID.randomUUID().toString());
-      preparedStatement.setString(2, activity.getId());
-      preparedStatement.setString(3, poster.getRemoteId());
-      preparedStatement.setString(4, activity.getUserId() != null ? activity.getUserId() : poster.getId());
-      preparedStatement.setString(5, poster.getId());
-      preparedStatement.setString(6, "POSTER");
-      preparedStatement.setBoolean(7, activity.isHidden());
-      preparedStatement.setBoolean(8, activity.isLocked());
-      preparedStatement.setLong(9, activity.getPostedTime());
+      preparedStatement.setString(2, activityId);
+      preparedStatement.setString(3, ownerId);
+      preparedStatement.setString(4, posterId);
+      preparedStatement.setString(5, viewerId);
+      preparedStatement.setString(6, viewerType);
+      preparedStatement.setBoolean(7, hidable);
+      preparedStatement.setBoolean(8, lockable);
+      preparedStatement.setLong(9, time);
       
       preparedStatement.executeUpdate();
  
@@ -473,7 +841,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
  
     } catch (SQLException e) {
  
-      LOG.debug("error in stream item creation:", e.getMessage());
+      LOG.error("error in stream item creation:", e.getMessage());
  
     } finally {
       try {
@@ -485,7 +853,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
           dbConnection.close();
         }
       } catch (SQLException e) {
-        LOG.debug("Cannot close statement or connection:", e.getMessage());
+        LOG.error("Cannot close statement or connection:", e.getMessage());
       }
     }
     
@@ -683,17 +1051,386 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public void deleteActivity(String activityId)
 			throws ActivityStorageException {
-		// TODO Auto-generated method stub
+	  LOG.debug("begin to delete activity");
+
+    // insert to mysql comment table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+
+    StringBuilder sql = new StringBuilder("delete from activity where _id = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+
+      // insert comment
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, activityId);
+      preparedStatement.executeUpdate();
+
+      deleteCommentByActivity(activityId);
+      deleteStreamItemByActivity(activityId);
+      
+      LOG.debug("activity deleted");
+
+    } catch (SQLException e) {
+
+      LOG.error("error in activity deletion:", e.getMessage());
+
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
 
 	}
 
+  private void deleteCommentByActivity(String activityId) throws ActivityStorageException {
+    LOG.debug("begin to delete comments");
+
+    // insert to mysql comment table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+
+    StringBuilder sql = new StringBuilder("delete from comment where activityId = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+
+      // insert comment
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, activityId);
+      preparedStatement.executeUpdate();
+
+      LOG.debug("comments deleted");
+
+    } catch (SQLException e) {
+
+      LOG.error("error in comment deletion:", e.getMessage());
+
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+
+  }
+	 
+  private void deleteStreamItemByActivity(String activityId) throws ActivityStorageException {
+    LOG.debug("begin to delete stream items");
+
+    // insert to mysql comment table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+
+    StringBuilder sql = new StringBuilder("delete from stream_item where activityId = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+
+      // insert comment
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, activityId);
+      preparedStatement.executeUpdate();
+
+      LOG.debug("stream items deleted");
+
+    } catch (SQLException e) {
+
+      LOG.error("error in stream items deletion:", e.getMessage());
+
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+
+  }
+  
 	@Override
 	public void deleteComment(String activityId, String commentId)
 			throws ActivityStorageException {
-		// TODO Auto-generated method stub
-
+	  ExoSocialActivity comment = getComment(commentId);
+    
+    deleteComment(commentId);
+    
+    String[] mentionIds = processMentions(comment.getTitle());
+    //update activities refs for mentioner
+    removeMentioner(activityId, mentionIds);
 	}
 
+  private void removeMentioner(String activityId, String[] mentionIds) {
+    if(ArrayUtils.isEmpty(mentionIds)){
+      return;
+    }
+    
+    List<StreamItem> items = getStreamItem(activityId, mentionIds);
+    if(CollectionUtils.isEmpty(items)){
+      return;
+    }
+    
+    for(StreamItem it:items){
+      //update
+      if (StringUtils.isNotBlank(it.getViewerType())) {
+        String[] viewTypes = it.getViewerType().split(",");
+        
+        //if MENTIONER is Poster, don't remove stream item
+        boolean removeable = ArrayUtils.contains(mentionIds, it.getPosterId()) ? false : true;
+        
+        if (it.getMentioner() > 0) {
+          int number = it.getMentioner() - 1;
+          if (number == 0) {
+            //remove Mentioner
+            String[] newViewTypes = (String[]) ArrayUtils.removeElement(viewTypes, ViewerType.MENTIONER.name());
+            if (newViewTypes.length == 0 && removeable) {
+              //delete stream item
+              deleteStreamItem(it.getId());
+            }else{
+              //update number + viewType
+              updateStreamItemWithComment(it.getId(), StringUtils.join(newViewTypes,","), number, it.getTime());
+            }
+          } else {
+            //update number
+            updateStreamItemWithComment(it.getId(), it.getViewerType(), number, it.getTime());
+          }
+        }
+      }
+    }
+    
+  }
+  
+  private void deleteStreamItem(String id) throws ActivityStorageException {
+    LOG.debug("begin to delete stream item");
+
+    // insert to mysql comment table
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+
+    StringBuilder sql = new StringBuilder("delete from stream_item where _id = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+
+      // insert comment
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, id);
+      preparedStatement.executeUpdate();
+
+      LOG.debug("stream item deleted");
+
+    } catch (SQLException e) {
+
+      LOG.error("error in stream item deletion:", e.getMessage());
+
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+
+  }
+  
+  /**
+   * get a stream item by activity, viewer and type
+   */
+  private List<StreamItem> getStreamItem(String activityId, String[] mentionIds) {
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
+
+    StringBuilder getActivitySQL = new StringBuilder();
+    getActivitySQL.append("select ")
+                  .append("_id, activityId, ownerId, posterId, viewerId, viewerType, hidable, lockable, time, mentioner, commenter")
+                  .append(" from stream_item where activityId = ? and viewerId in (")
+                  .append(StringUtils.join(mentionIds, ",")).append(")");
+
+    List<StreamItem> list = new ArrayList<StreamItem>();
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(getActivitySQL.toString());
+      preparedStatement.setString(1, activityId);
+
+      rs = preparedStatement.executeQuery();
+
+      while (rs.next()) {
+        StreamItem item = fillStreamItemFromResultSet(rs);
+        list.add(item);
+      }
+
+      LOG.debug("stream items found");
+
+      return list;
+
+    } catch (SQLException e) {
+
+      LOG.error("error in stream items look up:", e.getMessage());
+      return null;
+
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+  }
+  
+  /**
+   * Processes Mentioners who has been mentioned via the Activity.
+   * 
+   * @param title
+   */
+  private String[] processMentions(String title) {
+    String[] mentionerIds = new String[0];
+    if (title == null || title.length() == 0) {
+      return ArrayUtils.EMPTY_STRING_ARRAY;
+    }
+
+    Matcher matcher = MENTION_PATTERN.matcher(title);
+    while (matcher.find()) {
+      String remoteId = matcher.group().substring(1);
+      if (!USER_NAME_VALIDATOR_REGEX.matcher(remoteId).matches()) {
+        continue;
+      }
+      Identity identity = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, remoteId);
+      // if not the right mention then ignore
+      if (identity != null) {
+        mentionerIds = (String[]) ArrayUtils.add(mentionerIds, identity.getId());
+      }
+    }
+    return mentionerIds;
+  }
+
+  
+	private ExoSocialActivity getComment(String id){
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
+
+    StringBuilder sql = new StringBuilder();
+    sql.append("select ")
+                  .append("_id, activityId, title, titleId, body, bodyId, postedTime,")
+                  .append("lastUpdated, posterId, ownerId, permaLink, hidable, lockable")
+                  .append(" from comment where _id = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, id);
+
+      rs = preparedStatement.executeQuery();
+      ExoSocialActivity comment = null;
+      
+      while (rs.next()) {
+        comment = fillCommentFromResultSet(rs);
+      }
+
+      LOG.debug("comment found");
+
+      return comment;
+
+    } catch (SQLException e) {
+
+      LOG.error("error in comment look up:", e.getMessage());
+      return null;
+
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    } 
+	}
+	
+	private void deleteComment(String id){
+	  LOG.debug("begin to delete comment");
+
+    Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+
+    StringBuilder sql = new StringBuilder("delete from comment where _id = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+
+      // insert comment
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, id);
+      preparedStatement.executeUpdate();
+
+      LOG.debug("comment deleted");
+
+    } catch (SQLException e) {
+
+      LOG.error("error in comment deletion:", e.getMessage());
+
+    } finally {
+      try {
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
+	}
+	
 	@Override
 	public List<ExoSocialActivity> getActivitiesOfIdentities(
 			List<Identity> connectionList, long offset, long limit)
@@ -784,7 +1521,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     sql.append("select ")
        .append("_id, title, titleId, body, bodyId, postedTime, lastUpdated, posterId, ownerId,")
        .append("permaLink, appId, externalId, priority, hidable, lockable, likers, metadata")
-       .append(" from activity where _id in (select distinct activityId from stream_item where ")
+       .append(" from activity as a inner join (select distinct activityId from stream_item where ")
        .append(" (viewerId = ? ");
     
     if(CollectionUtils.isNotEmpty(spaces)){
@@ -802,7 +1539,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       sql.append(" and time < ?");
     }
     
-    sql.append(" order by time desc)");
+    sql.append(" order by time desc limit 0,").append(limit).append(") as si on a._id = si.activityId");
     
     List<ExoSocialActivity> result = new LinkedList<ExoSocialActivity>();
     
@@ -817,7 +1554,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       
       rs = preparedStatement.executeQuery();
       
-      while(rs.next() && result.size() < limit){
+      while(rs.next()){
         ExoSocialActivity activity = new ExoSocialActivityImpl();
         fillActivityFromResultSet(rs, activity);
         result.add(activity);
@@ -829,7 +1566,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       
     } catch (SQLException e) {
  
-      LOG.debug("error in activity look up:", e.getMessage());
+      LOG.error("error in activity look up:", e.getMessage());
       return null;
  
     } finally {
@@ -846,7 +1583,7 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
           dbConnection.close();
         }
       } catch (SQLException e) {
-        LOG.debug("Cannot close statement or connection:", e.getMessage());
+        LOG.error("Cannot close statement or connection:", e.getMessage());
       }
     }
 	  
@@ -1012,25 +1749,81 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public List<ExoSocialActivity> getComments(
 			ExoSocialActivity existingActivity, int offset, int limit) {
-    /*DBCollection activityColl = CollectionName.COMMENT_COLLECTION.getCollection(this);
-    BasicDBObject query = new BasicDBObject(CommentMongoEntity.activityId.getName(), existingActivity.getId());
+	  
+	  Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
 
-    DBCursor cur = activityColl.find(query);*/
-    List<ExoSocialActivity> result = new ArrayList<ExoSocialActivity>();
-    /*while (cur.hasNext()) {
-      BasicDBObject entity = (BasicDBObject) cur.next();
-      ExoSocialActivity activity = new ExoSocialActivityImpl();
-      fillActivity(activity, entity);
-      activity.isComment(true);
-      
-      processActivity(activity);
-      result.add(activity);
-    }*/
-    LOG.debug("=======>getComments SIZE ="+ result.size());
+    StringBuilder sql = new StringBuilder();
+    sql.append("select ")
+                  .append("_id, activityId, title, titleId, body, bodyId, postedTime,")
+                  .append("lastUpdated, posterId, ownerId, permaLink, hidable, lockable")
+                  .append(" from comment where activityId = ?");
+
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(sql.toString());
+      preparedStatement.setString(1, existingActivity.getId());
+
+      rs = preparedStatement.executeQuery();
+
+      List<ExoSocialActivity> result = new ArrayList<ExoSocialActivity>();
+      while (rs.next()) {
+        ExoSocialActivity comment = fillCommentFromResultSet(rs);
+        processActivity(comment);
+        result.add(comment);
+      }
+
+      LOG.debug("comments found");
+
+      return result;
+
+    } catch (SQLException e) {
+
+      LOG.error("error in comments look up:", e.getMessage());
+      return null;
+
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
     
-    return result;
 	}
 
+  private ExoSocialActivity fillCommentFromResultSet(ResultSet rs) throws SQLException{
+    ExoSocialActivity comment = new ExoSocialActivityImpl();
+    
+    comment.setId(rs.getString("_id"));
+    comment.setTitle(rs.getString("title"));
+    comment.setTitleId(rs.getString("titleId"));
+    comment.setBody(rs.getString("body"));
+    comment.setBodyId(rs.getString("bodyId"));
+    comment.setUserId(rs.getString("posterId"));
+    comment.setPostedTime(rs.getLong("postedTime"));
+    comment.setUpdated(rs.getLong("lastUpdated"));
+    comment.setPosterId(rs.getString("posterId"));
+
+    comment.isLocked(rs.getBoolean("lockable"));
+    comment.isHidden(rs.getBoolean("hidable"));
+
+    comment.setStreamOwner(rs.getString("ownerId"));
+    comment.isComment(true);
+    return comment;
+  }
+  
 	@Override
 	public int getNumberOfComments(ExoSocialActivity existingActivity) {
 		// TODO Auto-generated method stub
