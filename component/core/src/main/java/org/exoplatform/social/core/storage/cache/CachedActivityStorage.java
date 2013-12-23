@@ -246,7 +246,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void saveComment(final ExoSocialActivity activity, final ExoSocialActivity comment) throws ActivityStorageException {
 
     //
-    storage.saveComment(activity, comment);
+    mysqlStorage.saveComment(activity, comment);
 
     //
     exoActivityCache.put(new ActivityKey(comment.getId()), new ActivityData(getActivity(comment.getId())));
@@ -287,8 +287,8 @@ public class CachedActivityStorage implements ActivityStorage {
   public void deleteActivity(final String activityId) throws ActivityStorageException {
 
     //
-    ExoSocialActivity a = storage.getActivity(activityId);
-    storage.deleteActivity(activityId);
+    ExoSocialActivity a = mysqlStorage.getActivity(activityId);
+    mysqlStorage.deleteActivity(activityId);
 
     //
     ActivityKey key = new ActivityKey(activityId);
@@ -303,7 +303,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void deleteComment(final String activityId, final String commentId) throws ActivityStorageException {
     
     //
-    storage.deleteComment(activityId, commentId);
+    mysqlStorage.deleteComment(activityId, commentId);
 
     //
     exoActivityCache.remove(new ActivityKey(commentId));
