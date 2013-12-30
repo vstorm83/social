@@ -37,6 +37,7 @@ import javax.jcr.InvalidItemStateException;
 import javax.jcr.ItemExistsException;
 import javax.jcr.Node;
 import javax.jcr.NodeIterator;
+import javax.jcr.RepositoryException;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.Validate;
@@ -45,6 +46,7 @@ import org.chromattic.api.query.Ordering;
 import org.chromattic.api.query.Query;
 import org.chromattic.api.query.QueryBuilder;
 import org.chromattic.api.query.QueryResult;
+import org.chromattic.core.api.ChromatticSessionImpl;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
@@ -58,6 +60,7 @@ import org.exoplatform.social.core.activity.model.ActivityStream;
 import org.exoplatform.social.core.activity.model.ActivityStreamImpl;
 import org.exoplatform.social.core.activity.model.ExoSocialActivity;
 import org.exoplatform.social.core.activity.model.ExoSocialActivityImpl;
+import org.exoplatform.social.core.application.RelationshipPublisher;
 import org.exoplatform.social.core.chromattic.entity.ActivityDayEntity;
 import org.exoplatform.social.core.chromattic.entity.ActivityEntity;
 import org.exoplatform.social.core.chromattic.entity.ActivityListEntity;
@@ -68,6 +71,7 @@ import org.exoplatform.social.core.chromattic.entity.LockableEntity;
 import org.exoplatform.social.core.chromattic.filter.JCRFilterLiteral;
 import org.exoplatform.social.core.chromattic.utils.ActivityList;
 import org.exoplatform.social.core.identity.model.Identity;
+import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.relationship.model.Relationship;
@@ -261,9 +265,23 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     fillStream(activityEntity, activity);
     
   }
+  
+  private long getLastUpdatedTime(ActivityEntity activityEntity) {
+    ChromatticSessionImpl chromatticSession = (ChromatticSessionImpl) getSession();
+    try {
+      Node node = chromatticSession.getNode(activityEntity);
+      if (node.hasProperty(ActivityEntity.lastUpdated.getName())) {
+        return activityEntity.getLastUpdated();
+      }
+    } catch (RepositoryException e) {
+      LOG.debug("Failed to get last updated by activity with id = " + activityEntity.getId(), e);
+    }
+    return activityEntity.getPostedTime();
+  }
 
-  private void fillActivityFromEntity(ActivityEntity activityEntity, ExoSocialActivity activity) {
+  private ExoSocialActivity fillActivityFromEntity(ActivityEntity activityEntity, ExoSocialActivity activity) {
 
+    try {
     //
     activity.setId(activityEntity.getId());
     activity.setTitle(activityEntity.getTitle());
@@ -272,7 +290,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     activity.setBodyId(activityEntity.getBodyId());
     activity.setUserId(activityEntity.getPosterIdentity().getId());
     activity.setPostedTime(activityEntity.getPostedTime());
-    activity.setUpdated(activityEntity.getLastUpdated());
+    activity.setUpdated(getLastUpdatedTime(activityEntity));
     activity.setType(activityEntity.getType());
     activity.setAppId(activityEntity.getAppId());
     activity.setExternalId(activityEntity.getExternalId());
@@ -322,11 +340,17 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     if (hidable != null) {
       activity.isHidden(hidable.getHidden());
     }
-    
+    } catch (Exception e) {
+      LOG.debug("Failed to fill activity from entity : entity null or missing property", e);
+      return null;
+    }
 
     //
-    fillStream(activityEntity, activity);
+    if (activity != null) {
+      fillStream(activityEntity, activity);
+    }
     
+    return activity;
   }
 
   private void fillStream(ActivityEntity activityEntity, ExoSocialActivity activity) {
@@ -459,9 +483,11 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
 
       //
       activity.setId(activityEntity.getId());
-      fillActivityFromEntity(activityEntity, activity);
+      activity = fillActivityFromEntity(activityEntity, activity);
 
-      processActivity(activity);
+      if (activity != null) {
+        processActivity(activity);
+      }
 
       //
       return activity;
@@ -544,7 +570,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       activityEntity.setCommenters(processCommenters(activity.getCommentedIds(), comment.getUserId(), commenters, true));
       
       //
-      long oldUpdated = activityEntity.getLastUpdated();
+      long oldUpdated = getLastUpdatedTime(activityEntity);
       activityEntity.getComments().add(commentEntity);
       activityEntity.setLastUpdated(currentMillis);
       commentEntity.setTitle(comment.getTitle());
@@ -581,6 +607,9 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       
       //
       activity.setUpdated(currentMillis);
+      
+      //SOC-3915 empty stream when post comment but lost it.
+      StorageUtils.persist();
       //
       if (mustInjectStreams) {
         Identity identity = identityStorage.findIdentityById(comment.getUserId());
@@ -631,6 +660,10 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       if (activity.getId() == null) {
 
         String[] mentioners = _createActivity(owner, activity);
+        if (RelationshipPublisher.USER_ACTIVITIES_FOR_RELATIONSHIP.equals(activity.getType()))
+          identityStorage.updateProfileActivityId(owner, activity.getId(), Profile.AttachedActivityType.RELATIONSHIP);
+
+        StorageUtils.persist();
         //create refs
         //streamStorage.save(owner, activity);
         if (mustInjectStreams) {
@@ -1421,8 +1454,11 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     
     for (int i = offset ; i < commentIds.length ; i++) {
       if (isHidden(commentIds[i]) == false) {
-        activities.add(getStorage().getActivity(commentIds[i]));
-        
+        ExoSocialActivity comment = getActivity(commentIds[i]);
+        if (comment == null) {
+          continue;
+        }
+        activities.add(comment);
         //
         if (activities.size() == limit) {
           break;
@@ -1443,10 +1479,15 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
 
     try {
       ActivityEntity activityEntity = _findById(ActivityEntity.class, commentId);
-      HidableEntity hidable = _getMixin(activityEntity, HidableEntity.class, false);
-      if (hidable != null) {
-        return hidable.getHidden();
+      if (activityEntity != null) {
+        HidableEntity hidable = _getMixin(activityEntity, HidableEntity.class, false);
+        if (hidable != null) {
+          return hidable.getHidden();
+        }
+      } else {
+        return true;
       }
+      
     } catch (NodeNotFoundException e) {
       return true;
     }
@@ -1467,7 +1508,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     //
     for(String commentId : commentIds) {
       ExoSocialActivity comment = getActivity(commentId);
-      if (comment != null && comment.isHidden() == false)
+      if (comment != null && !comment.isHidden())
         activities.add(getStorage().getActivity(commentId));
     }
 
@@ -1610,10 +1651,9 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
           owner = identityStorage.findIdentity(OrganizationIdentityProvider.NAME, changedActivity.getStreamOwner());
         }
         StreamInvocationHelper.updateHidable(owner, changedActivity);
+        getSession().save();
       }
       
-      getSession().save();
-
     }
     catch (NodeNotFoundException e) {
       throw new ActivityStorageException(
@@ -2410,6 +2450,9 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
                                                long limit) throws ActivityStorageException {
     List<ExoSocialActivity> got = new ArrayList<ExoSocialActivity>();
     StringBuilder query = new StringBuilder().append("SELECT * FROM soc:activity WHERE ").append(getQueryViewerActivityStream(owner, viewer));
+    query.append(" ORDER BY ").append(ActivityEntity.lastUpdated.getName()).append(" DESC");
+    query.append(", ").append(ActivityEntity.postedTime.getName()).append(" DESC");
+    
     NodeIterator it = nodes(query.toString());
     while (it.hasNext() && limit > 0) {
       if (offset > 0) {
