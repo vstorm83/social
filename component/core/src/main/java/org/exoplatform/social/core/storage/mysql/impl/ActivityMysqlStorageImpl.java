@@ -153,7 +153,6 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
       }
 
       processActivity(activity);
-      //activity.setTitle("test abc");
 
       LOG.debug("activity found");
 
@@ -492,7 +491,6 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 
     commenter(poster, activity, comment);
 
-    // TODO update mentioner
     updateMentioner(poster, activity, comment);
 
   }
@@ -824,7 +822,6 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
     }
     //end of insertion
 
-    //fillStream(null, activity);
     newStreamItemForNewActivity(owner, activity);
     
     return null;
@@ -919,7 +916,6 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
                      activity.getPostedTime());
   }
 
-  
   private void createStreamItem(String activityId, String ownerId, String posterId, String viewerId, 
                                 String viewerType, Boolean hidable, Boolean lockable, Long time){
     //insert to mysql stream_item table
