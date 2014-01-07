@@ -67,10 +67,10 @@ public class CachedActivityStorage implements ActivityStorage {
   private final FutureExoCache<ListActivitiesKey, ListActivitiesData, ServiceContext<ListActivitiesData>> activitiesCache;
   private final FutureExoCache<ActivityCountKey, Long, ServiceContext<Long>> activitySinceTimeCache;
 
-  private final ActivityStorageImpl storage;
+  //private final ActivityStorageImpl storage;
   
   //storage for mysql implementation
-  private final ActivityMysqlStorageImpl mysqlStorage;
+  private final ActivityMysqlStorageImpl storage;
 
   public void clearCache() {
 
@@ -155,12 +155,12 @@ public class CachedActivityStorage implements ActivityStorage {
   public CachedActivityStorage(final ActivityStorageImpl storage, final SocialStorageCacheService cacheService, final ActivityMysqlStorageImpl mystorage) {
 
     //
-    this.storage = storage;
-    this.storage.setStorage(this);
+    //this.storage = storage;
+    //this.storage.setStorage(this);
 
     //for mysql
-    this.mysqlStorage = mystorage;
-    this.mysqlStorage.setStorage(this);
+    this.storage = mystorage;
+    this.storage.setStorage(this);
     
     //
     this.exoActivityCache = cacheService.getActivityCache();
@@ -188,7 +188,7 @@ public class CachedActivityStorage implements ActivityStorage {
         new ServiceContext<ActivityData>() {
           public ActivityData execute() {
             try {
-              ExoSocialActivity got = mysqlStorage.getActivity(activityId);
+              ExoSocialActivity got = storage.getActivity(activityId);
               if (got != null) {
                 return new ActivityData(got);
               }
@@ -246,7 +246,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void saveComment(final ExoSocialActivity activity, final ExoSocialActivity comment) throws ActivityStorageException {
 
     //
-    mysqlStorage.saveComment(activity, comment);
+    storage.saveComment(activity, comment);
 
     //
     exoActivityCache.put(new ActivityKey(comment.getId()), new ActivityData(getActivity(comment.getId())));
@@ -262,7 +262,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public ExoSocialActivity saveActivity(final Identity owner, final ExoSocialActivity activity) throws ActivityStorageException {
 
     //using Mysql implementation
-    ExoSocialActivity a = mysqlStorage.saveActivity(owner, activity);
+    ExoSocialActivity a = storage.saveActivity(owner, activity);
 
     //
     ActivityKey key = new ActivityKey(a.getId());
@@ -287,8 +287,8 @@ public class CachedActivityStorage implements ActivityStorage {
   public void deleteActivity(final String activityId) throws ActivityStorageException {
 
     //
-    ExoSocialActivity a = mysqlStorage.getActivity(activityId);
-    mysqlStorage.deleteActivity(activityId);
+    ExoSocialActivity a = storage.getActivity(activityId);
+    storage.deleteActivity(activityId);
 
     //
     ActivityKey key = new ActivityKey(activityId);
@@ -303,7 +303,7 @@ public class CachedActivityStorage implements ActivityStorage {
   public void deleteComment(final String activityId, final String commentId) throws ActivityStorageException {
     
     //
-    mysqlStorage.deleteComment(activityId, commentId);
+    storage.deleteComment(activityId, commentId);
 
     //
     exoActivityCache.remove(new ActivityKey(commentId));
@@ -475,7 +475,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = mysqlStorage.getActivityFeed(ownerIdentity, offset, limit);
+            List<ExoSocialActivity> got = storage.getActivityFeed(ownerIdentity, offset, limit);
             ActivityCountKey sinceTimeKey = new ActivityCountKey(new IdentityKey(ownerIdentity),
                                                                  ActivityType.FEED, (long) (offset + limit));
             return buildIds(got, sinceTimeKey);
@@ -900,7 +900,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = mysqlStorage.getComments(existingActivity, offset, limit);
+            List<ExoSocialActivity> got = storage.getComments(existingActivity, offset, limit);
             return buildIds(got, null);
           }
         },
@@ -923,7 +923,7 @@ public class CachedActivityStorage implements ActivityStorage {
     return activitiesCountCache.get(
         new ServiceContext<IntegerData>() {
           public IntegerData execute() {
-            return new IntegerData(mysqlStorage.getNumberOfComments(existingActivity));
+            return new IntegerData(storage.getNumberOfComments(existingActivity));
           }
         },
         key)
@@ -1710,7 +1710,7 @@ public class CachedActivityStorage implements ActivityStorage {
     ListActivitiesData keys = activitiesCache.get(
         new ServiceContext<ListActivitiesData>() {
           public ListActivitiesData execute() {
-            List<ExoSocialActivity> got = mysqlStorage.getActivityFeedForUpgrade(ownerIdentity, offset, limit);
+            List<ExoSocialActivity> got = storage.getActivityFeedForUpgrade(ownerIdentity, offset, limit);
             return buildIds(got, null);
           }
         },
