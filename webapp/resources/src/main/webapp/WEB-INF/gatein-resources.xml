@@ -152,7 +152,7 @@
     </depends>
     <depends>
       <module>jquery</module>
-      <as>$</as>
+      <as>jq</as>
     </depends>
     <depends>
       <module>bts_dropdown</module>
