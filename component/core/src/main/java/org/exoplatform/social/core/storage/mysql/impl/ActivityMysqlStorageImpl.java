@@ -2136,14 +2136,69 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 
 	@Override
 	public int getNumberOfSpaceActivities(Identity spaceIdentity) {
-		// TODO Auto-generated method stub
-		return 0;
+	  return getNumberOfSpaceActivitiesForUpgrade(spaceIdentity);
 	}
 
 	@Override
 	public int getNumberOfSpaceActivitiesForUpgrade(Identity spaceIdentity) {
-		// TODO Auto-generated method stub
-		return 0;
+	  StringBuilder sql = new StringBuilder();
+	  sql.append("select count(distinct activityId) as count from stream_item where ownerId = ?");
+	  return getCount(sql.toString(), spaceIdentity.getRemoteId());
+	}
+	
+	private int getCount(String sql, Object... params){
+	  Connection dbConnection = null;
+    PreparedStatement preparedStatement = null;
+    ResultSet rs = null;
+    int count = 0;
+    
+    try {
+      dbConnection = getJNDIConnection();
+      preparedStatement = dbConnection.prepareStatement(sql);
+      
+      int index = 1;
+      for(Object p: params){
+        if(p instanceof String){
+          preparedStatement.setString(index++,(String)p);
+        }else if(p instanceof Integer){
+          preparedStatement.setInt(index++,(Integer)p);
+        }else if(p instanceof Long){
+          preparedStatement.setLong(index++,(Long)p);
+        }
+      }
+      
+      rs = preparedStatement.executeQuery();
+
+      while (rs.next()) {
+        count = rs.getInt("count");
+      }
+
+      LOG.debug("activities found");
+
+      return count;
+
+    } catch (SQLException e) {
+
+      LOG.error("error in stream items look up:", e.getMessage());
+      return 0;
+
+    } finally {
+      try {
+        if (rs != null) {
+          rs.close();
+        }
+
+        if (preparedStatement != null) {
+          preparedStatement.close();
+        }
+
+        if (dbConnection != null) {
+          dbConnection.close();
+        }
+      } catch (SQLException e) {
+        LOG.error("Cannot close statement or connection:", e.getMessage());
+      }
+    }
 	}
 
 	@Override
@@ -2238,8 +2293,12 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public int getNumberOfActivitiesByPoster(Identity ownerIdentity,
 			Identity viewerIdentity) {
-		// TODO Auto-generated method stub
-		return 0;
+    String[] identityIds = getIdentities(ownerIdentity, viewerIdentity);
+    StringBuilder sql = new StringBuilder();
+    sql.append("select count(distinct activityId) as count from stream_item where viewerId in('")
+       .append(StringUtils.join(identityIds, "','"))
+       .append("')");
+    return getCount(sql.toString(), new Object());
 	}
 
 	@Override
