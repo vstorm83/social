@@ -1552,16 +1552,24 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	@Override
 	public int getNumberOfUserActivities(Identity owner)
 			throws ActivityStorageException {
-		// TODO Auto-generated method stub
-		return 0;
+	  return getNumberOfUserActivitiesForUpgrade(owner);
 	}
 
-	@Override
-	public int getNumberOfUserActivitiesForUpgrade(Identity owner)
-			throws ActivityStorageException {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+  @Override
+  public int getNumberOfUserActivitiesForUpgrade(Identity owner) throws ActivityStorageException {
+    StringBuilder sql = new StringBuilder();
+    sql.append("select count(distinct activityId) as count ")
+       .append(" from stream_item where ((viewerId = ? and (viewerType like ? or viewerType like ? or viewerType like ? or viewerType like ?))")
+       .append(" or (posterId = ? and viewerType is null))");
+
+    return getCount(sql.toString(),
+                    owner.getId(),
+                    ViewerType.COMMENTER.getType(),
+                    ViewerType.LIKER.getType(),
+                    ViewerType.MENTIONER.getType(),
+                    ViewerType.POSTER.getType(),
+                    owner.getId());
+  }
 
 	@Override
 	public int getNumberOfNewerOnUserActivities(Identity ownerIdentity,
@@ -1692,18 +1700,43 @@ public class ActivityMysqlStorageImpl extends AbstractMysqlStorage implements
 	  
 	}
 
-	@Override
-	public int getNumberOfActivitesOnActivityFeed(Identity ownerIdentity) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+  @Override
+  public int getNumberOfActivitesOnActivityFeed(Identity ownerIdentity) {
+    return getNumberOfActivitesOnActivityFeedForUpgrade(ownerIdentity);
+  }
 
-	@Override
-	public int getNumberOfActivitesOnActivityFeedForUpgrade(
-			Identity ownerIdentity) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+  @Override
+  public int getNumberOfActivitesOnActivityFeedForUpgrade(Identity ownerIdentity) {
+    List<Identity> relationships = relationshipStorage.getConnections(ownerIdentity);
+
+    Set<String> relationshipIds = new HashSet<String>();
+    for (Identity identity : relationships) {
+      relationshipIds.add(identity.getId());
+    }
+
+    // get spaces where user is member
+    List<Space> spaces = spaceStorage.getMemberSpaces(ownerIdentity.getRemoteId());
+    String[] spaceIds = new String[0];
+    for (Space space : spaces) {
+      spaceIds = (String[]) ArrayUtils.add(spaceIds, space.getPrettyName());
+    }
+
+    StringBuilder sql = new StringBuilder();
+    sql.append("select count(distinct activityId) as count from stream_item where ")
+       .append(" (viewerId = ? ");
+    
+    if(CollectionUtils.isNotEmpty(spaces)){
+      sql.append("or ownerId in ('").append(StringUtils.join(spaceIds, "','")).append("') ");
+    }
+    
+    if(CollectionUtils.isNotEmpty(relationships)){
+      sql.append("or posterId in ('").append(StringUtils.join(relationshipIds, "','")).append("') ");
+    }
+    
+    sql.append(")");
+    
+    return getCount(sql.toString(), ownerIdentity.getId());
+  }
 
 	@Override
 	public int getNumberOfNewerOnActivityFeed(Identity ownerIdentity,
