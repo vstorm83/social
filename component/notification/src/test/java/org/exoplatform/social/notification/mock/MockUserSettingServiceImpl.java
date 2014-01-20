@@ -38,10 +38,6 @@ public class MockUserSettingServiceImpl implements UserSettingService {
     return 0;
   }
 
-  @Override
-  public List<UserSetting> getDefaultDaily() {
-    return null;
-  }
 
   @Override
   public List<String> getUserSettingByPlugin(String pluginId) {
@@ -63,6 +59,20 @@ public class MockUserSettingServiceImpl implements UserSettingService {
 
   @Override
   public void addMixin(User[] users) {
+  }
+
+
+  @Override
+  public List<UserSetting> getDefaultDaily(int offset, int limit) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+
+  @Override
+  public long getNumberOfDefaultDaily() {
+    // TODO Auto-generated method stub
+    return 0;
   }
 
 }
