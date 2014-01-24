@@ -528,7 +528,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
   
   @Override
   public List<ExoSocialActivity> getSpaceStream(Identity owner, int offset, int limit) {
-    return getActivities(ActivityRefType.SPACE_STREAM, owner, offset, limit);
+    return getActivitiesNotQuery(ActivityRefType.SPACE_STREAM, owner, offset, limit);
   }
 
   @Override
