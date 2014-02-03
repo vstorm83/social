@@ -22,7 +22,6 @@
         <repository name="repository" system-workspace="system" default-workspace="portal-test">
             <security-domain>gatein-domain</security-domain>
             <access-control>optional</access-control>
-            <session-max-age>30</session-max-age>
             <authentication-policy>org.exoplatform.services.jcr.impl.core.access.JAASAuthenticator</authentication-policy>
 
             <!-- System -->
@@ -118,8 +117,6 @@
                     <query-handler class="org.exoplatform.services.jcr.impl.core.query.lucene.SearchIndex">
                         <properties>
                             <property name="index-dir" value="${gatein.test.tmp.dir}/jcr/jcrlucenedb/portal-test"/>
-                            <property name="support-highlighting" value="true" />
-                            <property name="excerptprovider-class" value="org.exoplatform.services.jcr.impl.core.query.lucene.WeightedHTMLExcerpt"/>
                         </properties>
                     </query-handler>
                     <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
