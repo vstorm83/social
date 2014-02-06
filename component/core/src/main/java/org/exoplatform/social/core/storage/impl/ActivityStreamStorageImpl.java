@@ -21,13 +21,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
-
-import javax.jcr.InvalidItemStateException;
-import javax.jcr.ItemExistsException;
-import javax.jcr.PathNotFoundException;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.chromattic.api.ChromatticException;
@@ -52,7 +46,6 @@ import org.exoplatform.social.core.chromattic.filter.JCRFilterLiteral;
 import org.exoplatform.social.core.chromattic.utils.ActivityRefIterator;
 import org.exoplatform.social.core.chromattic.utils.ActivityRefList;
 import org.exoplatform.social.core.identity.model.Identity;
-import org.exoplatform.social.core.identity.model.Profile;
 import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.identity.provider.SpaceIdentityProvider;
 import org.exoplatform.social.core.space.model.Space;
@@ -359,10 +352,25 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
   
   @Override
   public void update(ProcessContext ctx) {
+    
+    StreamProcessContext streamCtx = null;
+    ActivityEntity activityEntity;
+    ConcurrentSkipListSet<ActivityRef> references = null;
     try {
-      StreamProcessContext streamCtx = ObjectHelper.cast(StreamProcessContext.class, ctx);
-      ActivityEntity activityEntity = streamCtx.getActivityEntity();
-      List<ActivityRef> references = new CopyOnWriteArrayList<ActivityRef>(activityEntity.getActivityRefs());
+      streamCtx = ObjectHelper.cast(StreamProcessContext.class, ctx);
+      activityEntity = streamCtx.getActivityEntity();
+      references = new ConcurrentSkipListSet<ActivityRef>(activityEntity.getActivityRefs());
+    } catch (ChromatticException ex) {
+      LOG.debug("Session is closed and try to get new one.");
+      activityEntity = null;
+    }
+    //
+    try {
+      if (activityEntity == null) {
+        activityEntity = _findById(ActivityEntity.class, streamCtx.getActivity().getId());
+        references = new ConcurrentSkipListSet<ActivityRef>(activityEntity.getActivityRefs());
+      }
+      //
       long oldUpdated = streamCtx.getOldLastUpdated();
       ActivityRef newRef = null;
       for (ActivityRef old : references) {

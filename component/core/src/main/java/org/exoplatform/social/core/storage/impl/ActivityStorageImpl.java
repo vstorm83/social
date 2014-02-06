@@ -296,6 +296,11 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     activity.setPriority(activityEntity.getPriority());
     activity.isComment(activityEntity.isComment());
     activity.setPosterId(activityEntity.getPosterIdentity().getId());
+    
+    //
+    if (activity.isComment()) {
+      activity.setParentId(activityEntity.getId());
+    }
 
     //
     List<String> computeCommentid = new ArrayList<String>();
@@ -634,10 +639,11 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     
     //
     LOG.debug(String.format(
-        "Comment %s by %s (%s) created",
+        "Comment %s by %s (%s) created: comment size is == %s ",
         comment.getTitle(),
         comment.getUserId(),
-        comment.getId()
+        comment.getId(),
+        activity.getCommentedIds().length
     ));
   }
 
