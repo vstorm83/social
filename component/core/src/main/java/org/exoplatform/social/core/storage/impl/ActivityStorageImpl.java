@@ -612,7 +612,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       }
     }
     
-    //StorageUtils.persist();
+    StorageUtils.persist();
     
     //
     LOG.debug(String.format(
