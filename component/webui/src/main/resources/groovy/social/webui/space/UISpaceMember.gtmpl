@@ -92,7 +92,7 @@
 
 	<!-- Pending users table -->
 	<% if (pendingUsers.size() > 0) { %>
-	<table class="uiGrid table  table-hover table-striped">
+	<table class="uiTable uiTableHover uiTableStriped">
 		<thead>
 		<tr>
 			<th><%= _ctx.appRes(uicomponent.getId() + ".title.pending")%></th>
@@ -131,7 +131,7 @@
 	<!-- Invited users table -->
 	<% if(invitedUsers.size() > 0) { %>
 
-	<table class="uiGrid table  table-hover table-striped" >
+	<table class="uiTable uiTableHover uiTableStriped" >
 		<thead>
 		<tr>
 			<th><%= _ctx.appRes(uicomponent.getId() + ".title.invited")%></th>
@@ -166,7 +166,7 @@
 
 	<!-- Existing users table -->
 	<% if(existingUsers.size() > 0) { %>
-	<table class="uiGrid table  table-hover table-striped">
+	<table class="uiTable uiTableHover uiTableStriped">
 		<thead>
 		<tr>
 			<th><%= _ctx.appRes(uicomponent.getId() + ".title.members")%></th>
