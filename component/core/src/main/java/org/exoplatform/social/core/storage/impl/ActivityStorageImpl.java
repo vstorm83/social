@@ -619,7 +619,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       if (mustInjectStreams) {
         Identity identity = identityStorage.findIdentityById(comment.getUserId());
         StreamInvocationHelper.updateCommenter(identity, activityEntity, commenters.toArray(new String[0]), oldUpdated);
-        StreamInvocationHelper.update(activityEntity, mentioners.toArray(new String[0]), oldUpdated);
+        StreamInvocationHelper.update(activity, mentioners.toArray(new String[0]), oldUpdated);
       }
     }  
     catch (NodeNotFoundException e) {
@@ -635,7 +635,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
       }
     }
     
-    //StorageUtils.persist();
+    StorageUtils.persist();
     
     //
     LOG.debug(String.format(
@@ -675,7 +675,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
           //run synchronous
           StreamInvocationHelper.savePoster(owner, entity);
           //run asynchronous
-          StreamInvocationHelper.save(owner, entity, mentioners.toArray(new String[0]));
+          StreamInvocationHelper.save(owner, activity, mentioners.toArray(new String[0]));
         }
       }
       else {
