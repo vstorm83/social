@@ -305,12 +305,7 @@ public class ActivityManagerTest extends AbstractCoreTest {
     populateActivityMass(demoIdentity, 1);
     ExoSocialActivity demoActivity = activityManager.getActivitiesWithListAccess(demoIdentity).load(0, 1)[0];
     assertNotNull("demoActivity must be false", demoActivity);
-    try {
-      activityManager.getParentActivity(demoActivity);
-      fail("Expecting NullPointerException");
-    } catch (NullPointerException npe) {
-
-    }
+    assertNull(activityManager.getParentActivity(demoActivity));
 
     //comment
     ExoSocialActivityImpl comment = new ExoSocialActivityImpl();

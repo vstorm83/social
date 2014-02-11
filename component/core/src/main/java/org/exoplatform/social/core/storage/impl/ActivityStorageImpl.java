@@ -299,7 +299,7 @@ public class ActivityStorageImpl extends AbstractStorage implements ActivityStor
     
     //
     if (activity.isComment()) {
-      activity.setParentId(activityEntity.getId());
+      activity.setParentId(activityEntity.getParentActivity().getId());
     }
 
     //

@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.chromattic.api.ChromatticException;
@@ -355,11 +354,11 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     
     StreamProcessContext streamCtx = null;
     ActivityEntity activityEntity;
-    ConcurrentSkipListSet<ActivityRef> references = null;
+    Collection<ActivityRef> references = null;
     try {
       streamCtx = ObjectHelper.cast(StreamProcessContext.class, ctx);
       activityEntity = streamCtx.getActivityEntity();
-      references = new ConcurrentSkipListSet<ActivityRef>(activityEntity.getActivityRefs());
+      references = new ArrayList<ActivityRef>(activityEntity.getActivityRefs());
     } catch (ChromatticException ex) {
       LOG.debug("Session is closed and try to get new one.");
       activityEntity = null;
@@ -368,7 +367,7 @@ public class ActivityStreamStorageImpl extends AbstractStorage implements Activi
     try {
       if (activityEntity == null) {
         activityEntity = _findById(ActivityEntity.class, streamCtx.getActivity().getId());
-        references = new ConcurrentSkipListSet<ActivityRef>(activityEntity.getActivityRefs());
+        references = new ArrayList<ActivityRef>(activityEntity.getActivityRefs());
       }
       //
       long oldUpdated = streamCtx.getOldLastUpdated();

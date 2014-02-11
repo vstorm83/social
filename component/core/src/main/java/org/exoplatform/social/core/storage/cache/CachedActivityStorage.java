@@ -161,6 +161,9 @@ public class CachedActivityStorage implements ActivityStorage {
    */
   public ExoSocialActivity getActivity(final String activityId) throws ActivityStorageException {
 
+    if (activityId == null || activityId.length() == 0) {
+      return ActivityData.NULL.build();
+    }
     //
     ActivityKey key = new ActivityKey(activityId);
 
@@ -258,7 +261,7 @@ public class CachedActivityStorage implements ActivityStorage {
    * {@inheritDoc}
    */
   public ExoSocialActivity getParentActivity(final ExoSocialActivity comment) throws ActivityStorageException {
-    return getActivity(comment.getParentId());
+    return getActivity(getActivity(comment.getId()).getParentId());
   }
 
   /**
