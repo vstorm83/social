@@ -303,7 +303,8 @@ public class StorageUtils {
     try {
       ChromatticSession chromatticSession = AbstractStorage.lifecycleLookup().getSession();
       if (chromatticSession.getJCRSession().hasPendingChanges()) {
-        chromatticSession.save();
+        chromatticSession.getJCRSession().refresh(true);
+        chromatticSession.getJCRSession().save();
       }
     } catch (Exception e) {
       return false;
