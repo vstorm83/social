@@ -347,7 +347,7 @@ public class ActivityStorageImplTestCase extends AbstractCoreTest {
 
   }
 
-  @MaxQueryNumber(2235)
+  @MaxQueryNumber(2367)
   public void testActivityCount() throws Exception {
 
     // fill 10 activities
@@ -410,7 +410,7 @@ public class ActivityStorageImplTestCase extends AbstractCoreTest {
     identityStorage.deleteIdentity(spaceIdentity);
   }
 
-  @MaxQueryNumber(1395)
+  @MaxQueryNumber(1527)
   public void testActivityOrder() throws Exception {
     // fill 10 activities
     for (int i = 0; i < 10; ++i) {
@@ -427,7 +427,7 @@ public class ActivityStorageImplTestCase extends AbstractCoreTest {
     }
   }
 
-  @MaxQueryNumber(1480)
+  @MaxQueryNumber(1482)
   public void testActivityOrderByPostedTime() throws Exception {
     // fill 10 activities
     Calendar cal = Calendar.getInstance();
@@ -457,7 +457,7 @@ public class ActivityStorageImplTestCase extends AbstractCoreTest {
     }
   }
 
-  @MaxQueryNumber(3585)
+  @MaxQueryNumber(4032)
   public void testActivityOrder2() throws Exception {
     // fill 10 activities
     for (int i = 0; i < 10; ++i) {
@@ -579,7 +579,7 @@ public class ActivityStorageImplTestCase extends AbstractCoreTest {
     assertEquals(false, updatedActivity.isLocked());
   }
 
-  @MaxQueryNumber(32328)
+  @MaxQueryNumber(32430)
   public void testCommentOrder() throws Exception {
     // fill 10 activities
     for (int i = 0; i < 10; ++i) {
@@ -670,7 +670,7 @@ public class ActivityStorageImplTestCase extends AbstractCoreTest {
     assertTrue(!ids.contains(maryIdentity.getId()));
   }
 
-  @MaxQueryNumber(3867)
+  @MaxQueryNumber(4263)
   public void testContactActivities() throws Exception {
 
     //
