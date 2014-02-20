@@ -33,7 +33,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.shindig.auth.AnonymousSecurityToken;
 import org.apache.shindig.auth.SecurityToken;
-import org.apache.shindig.common.util.ImmediateFuture;
 import org.apache.shindig.protocol.DataCollection;
 import org.apache.shindig.protocol.ProtocolException;
 import org.apache.shindig.protocol.RestfulCollection;
@@ -73,6 +72,7 @@ import org.exoplatform.social.opensocial.model.ExoPersonImpl;
 import org.exoplatform.social.opensocial.model.SpaceImpl;
 
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
@@ -152,7 +152,7 @@ public class ExoPeopleService extends ExoService implements PersonService, AppDa
       toIndex = toIndex < fromIndex ? fromIndex : toIndex;
       result = result.subList(fromIndex, toIndex);
 
-      return ImmediateFuture.newInstance(new RestfulCollection<Person>(
+      return Futures.immediateFuture(new RestfulCollection<Person>(
               result, collectionOptions.getFirst(), totalSize));
     } catch (Exception je) {
       throw new ProtocolException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, je.getMessage(), je);
@@ -171,7 +171,7 @@ public class ExoPeopleService extends ExoService implements PersonService, AppDa
 
       Identity identity = getIdentity(id.getUserId(token), true, token);
 
-      return ImmediateFuture.newInstance(convertToPerson(identity, fields, token));
+      return Futures.immediateFuture(convertToPerson(identity, fields, token));
     } catch (Exception e) {
       throw new ProtocolException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage(), e);
     }
@@ -307,7 +307,7 @@ public class ExoPeopleService extends ExoService implements PersonService, AppDa
         Identity id = it.next();
         idToData.put(id.getId(), getPreferences(id.getRemoteId(), gadgetId, instanceId, fields));
       }
-      return ImmediateFuture.newInstance(new DataCollection(idToData));
+      return Futures.immediateFuture(new DataCollection(idToData));
     } catch (Exception e) {
       throw new ProtocolException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage(), e);
     }
@@ -355,7 +355,7 @@ public class ExoPeopleService extends ExoService implements PersonService, AppDa
    * @throws Exception the exception
    */
   private void savePreferences(String userID, String gadgetId, String instanceID,
-                               Map<String, String> values) throws Exception {
+                               Map<String, Object> values) throws Exception {
 //    PortalContainer pc = RootContainer.getInstance().getPortalContainer("portal");
 //    UserGadgetStorage userGadgetStorage = (UserGadgetStorage) pc.getComponentInstanceOfType(UserGadgetStorage.class);
 //
@@ -402,30 +402,7 @@ public class ExoPeopleService extends ExoService implements PersonService, AppDa
     } catch (Exception e) {
       throw new ProtocolException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage(), e);
     }
-    return ImmediateFuture.newInstance(null);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  public Future<Void> updatePersonData(UserId user, GroupId groupId, String appId, Set<String> fields,
-                                       Map<String, String> values, SecurityToken token) throws ProtocolException {
-    //TODO: remove the fields that are in the fields list and not in the values map
-    try {
-      if (token instanceof AnonymousSecurityToken) {
-        throw new Exception(Integer.toString(HttpServletResponse.SC_FORBIDDEN));
-      }
-      String userId = user.getUserId(token);
-
-      Identity id = getIdentity(userId, true, token);
-      String gadgetId = clean(appId);
-      String instanceId = "" + token.getModuleId();
-
-      savePreferences(id.getRemoteId(), gadgetId, instanceId, values);
-    } catch (Exception e) {
-      throw new ProtocolException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage(), e);
-    }
-    return ImmediateFuture.newInstance(null);
+    return Futures.immediateFuture(null);
   }
 
   /**
@@ -481,4 +458,30 @@ public class ExoPeopleService extends ExoService implements PersonService, AppDa
     }
     return stringBuffer.toString();
   }
+
+@Override
+public Future<Void> updatePersonData(UserId userId, GroupId groupId, String appId, Set<String> fields,
+        Map<String, Object> values, SecurityToken token) throws ProtocolException {
+  //TODO: remove the fields that are in the fields list and not in the values map
+    try {
+      if (token instanceof AnonymousSecurityToken) {
+        throw new Exception(Integer.toString(HttpServletResponse.SC_FORBIDDEN));
+      }
+
+      Identity id = getIdentity(userId.getUserId(), true, token);
+      String gadgetId = clean(appId);
+      String instanceId = "" + token.getModuleId();
+
+      savePreferences(id.getRemoteId(), gadgetId, instanceId, values);
+    } catch (Exception e) {
+      throw new ProtocolException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage(), e);
+    }
+    return Futures.immediateFuture(null);
+}
+
+@Override
+public Future<Person> updatePerson(UserId id, Person person, SecurityToken token) throws ProtocolException {
+    // TODO Auto-generated method stub
+    return null;
+}
 }

@@ -1,9 +1,14 @@
 package org.exoplatform.social.opensocial.auth;
 
-import java.io.File;
-
 import javax.servlet.http.HttpServletRequest;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import net.oauth.SimpleOAuthValidator;
+
+import org.apache.shindig.auth.AbstractSecurityToken.Keys;
 import org.apache.shindig.auth.SecurityToken;
 import org.apache.shindig.common.crypto.BasicBlobCrypter;
 import org.apache.shindig.common.util.TimeSource;
@@ -37,7 +42,7 @@ public class ExoOAuthAuthenticationHandler extends OAuthAuthenticationHandler {
   public ExoOAuthAuthenticationHandler(OAuthDataStore store,
                                        @Named("shindig.oauth.legacy-body-signing") boolean allowLegacyBodySigning) {
     // TODO Check the side effects as if we remove allowLegacyBodySigning from constructor.
-    super(store);
+    super(store, new SimpleOAuthValidator());
   }
 
   public String getName() {
@@ -73,10 +78,14 @@ public class ExoOAuthAuthenticationHandler extends OAuthAuthenticationHandler {
       return null;
     }
 
-    final ExoBlobCrypterSecurityToken crypterSecurityToken = new ExoBlobCrypterSecurityToken(crypter, portalContainer, domain);
-    crypterSecurityToken.setOwnerId(securityToken.getOwnerId());
-    crypterSecurityToken.setAppUrl(securityToken.getAppUrl());
-    crypterSecurityToken.setViewerId(securityToken.getViewerId());
+    Map<String, String> values = new HashMap<String, String>();
+    values.put(Keys.APP_URL.getKey(), securityToken.getAppUrl());
+    values.put(Keys.MODULE_ID.getKey(), Long.toString(securityToken.getModuleId()));
+    values.put(Keys.OWNER.getKey(), securityToken.getOwnerId());
+    values.put(Keys.VIEWER.getKey(), securityToken.getViewerId());
+    values.put(Keys.TRUSTED_JSON.getKey(), securityToken.getTrustedJson());
+    
+    final ExoBlobCrypterSecurityToken crypterSecurityToken = new ExoBlobCrypterSecurityToken(portalContainer, domain, securityToken.getActiveUrl(), values);
     crypterSecurityToken.setPortalContainer(portalContainer);
 
     return crypterSecurityToken;

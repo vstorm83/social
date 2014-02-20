@@ -30,6 +30,10 @@ import org.apache.shindig.protocol.conversion.BeanJsonConverter;
 import org.apache.shindig.protocol.conversion.BeanXStreamConverter;
 import org.apache.shindig.protocol.conversion.xstream.XStreamConfiguration;
 import org.apache.shindig.social.core.oauth.OAuthAuthenticationHandler;
+import org.apache.shindig.social.core.oauth2.OAuth2DataService;
+import org.apache.shindig.social.core.oauth2.OAuth2DataServiceImpl;
+import org.apache.shindig.social.core.oauth2.OAuth2Service;
+import org.apache.shindig.social.core.oauth2.OAuth2ServiceImpl;
 import org.apache.shindig.social.core.util.BeanXStreamAtomConverter;
 import org.apache.shindig.social.core.util.xstream.XStream081Configuration;
 import org.apache.shindig.social.opensocial.model.Person;
@@ -78,7 +82,10 @@ public class ExoSocialApiGuiceModule  extends AbstractModule {
         BeanJsonConverter.class);
     bind(BeanConverter.class).annotatedWith(Names.named("shindig.bean.converter.atom")).to(
         BeanXStreamAtomConverter.class);
-    
+
+    bind(OAuth2DataService.class).to(OAuth2DataServiceImpl.class);
+    bind(OAuthDataStore.class).to(ExoOAuthDataStore.class);
+    bind(OAuth2Service.class).to(OAuth2ServiceImpl.class);
     bind(SecurityTokenCodec.class).annotatedWith(Names.named("exo.auth.decoder")).to(ExoSecurityTokenDecoder.class);
     bind(OAuthAuthenticationHandler.class).annotatedWith(Names.named("exo.auth.handler")).
             to(ExoOAuthAuthenticationHandler.class);
@@ -96,7 +103,6 @@ public class ExoSocialApiGuiceModule  extends AbstractModule {
     bind(ActivityService.class).to(ExoActivityService.class);
 
     bind(Person.class).to(ExoPersonImpl.class);
-    bind(OAuthDataStore.class).to(ExoOAuthDataStore.class);
 
   }
 

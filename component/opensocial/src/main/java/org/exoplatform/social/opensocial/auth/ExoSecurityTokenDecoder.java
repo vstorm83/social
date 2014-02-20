@@ -18,6 +18,7 @@ package org.exoplatform.social.opensocial.auth;
 
 import java.util.Map;
 
+import org.apache.shindig.auth.AbstractSecurityToken;
 import org.apache.shindig.auth.BasicSecurityTokenCodec;
 import org.apache.shindig.auth.SecurityToken;
 import org.apache.shindig.auth.SecurityTokenCodec;
@@ -63,5 +64,14 @@ public class ExoSecurityTokenDecoder implements SecurityTokenCodec {
     // TODO Need to check gadget (Activity Stream ... ) for this change.
     throw new RuntimeException();
   }
+
+  public int getTokenTimeToLive() {
+      return AbstractSecurityToken.DEFAULT_MAX_TOKEN_TTL;
+  }
+
+@Override
+public int getTokenTimeToLive(String arg0) {
+    return getTokenTimeToLive();
+}
 
 }

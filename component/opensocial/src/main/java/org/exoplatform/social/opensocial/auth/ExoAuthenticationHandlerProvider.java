@@ -19,6 +19,7 @@ package org.exoplatform.social.opensocial.auth;
 import org.apache.shindig.auth.AnonymousAuthenticationHandler;
 import org.apache.shindig.social.core.oauth.AuthenticationHandlerProvider;
 import org.apache.shindig.social.core.oauth.OAuthAuthenticationHandler;
+import org.apache.shindig.social.core.oauth2.OAuth2AuthenticationHandler;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -26,11 +27,11 @@ import com.google.inject.name.Named;
 public class ExoAuthenticationHandlerProvider extends AuthenticationHandlerProvider {
 
   @Inject
-  public ExoAuthenticationHandlerProvider(ExoUrlAuthenticationHandler urlParam,
+  public ExoAuthenticationHandlerProvider(OAuth2AuthenticationHandler oauth2Handler, ExoUrlAuthenticationHandler urlParam,
                                           @Named("exo.auth.handler")OAuthAuthenticationHandler threeLeggedOAuth,
                                           AnonymousAuthenticationHandler anonymous) {
 
-    super(urlParam, threeLeggedOAuth, anonymous);
+    super(oauth2Handler, urlParam, threeLeggedOAuth, anonymous);
 
   }
 }

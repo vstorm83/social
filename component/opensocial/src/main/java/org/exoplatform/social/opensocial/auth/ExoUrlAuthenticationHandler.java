@@ -24,9 +24,10 @@ import com.google.inject.name.Named;
 
 public class ExoUrlAuthenticationHandler extends UrlParameterAuthenticationHandler {
 
-  @Inject
-  public ExoUrlAuthenticationHandler(@Named("exo.auth.decoder") SecurityTokenCodec securityTokenCodec) {
-    super(securityTokenCodec);
-  }
+    @Inject
+    public ExoUrlAuthenticationHandler(@Named("exo.auth.decoder") SecurityTokenCodec securityTokenCodec,
+            @Named("org.apache.shindig.auth.oauth2-require-ssl") Boolean oauthSSLrequired) {
+        super(securityTokenCodec, oauthSSLrequired);
+    }
 
 }

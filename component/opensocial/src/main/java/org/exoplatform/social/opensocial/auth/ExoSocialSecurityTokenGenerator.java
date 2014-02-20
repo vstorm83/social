@@ -17,6 +17,10 @@
 package org.exoplatform.social.opensocial.auth;
 
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.shindig.auth.AbstractSecurityToken.Keys;
 import org.apache.shindig.common.crypto.BlobCrypter;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.portal.application.PortalRequestContext;
@@ -53,13 +57,14 @@ public class ExoSocialSecurityTokenGenerator extends ExoDefaultSecurityTokenGene
    */
   protected String createToken(String gadgetURL, String owner, String viewer, Long moduleId, String container) {
     try {
-      BlobCrypter crypter = getBlobCrypter();
-      ExoBlobCrypterSecurityToken t = new ExoBlobCrypterSecurityToken(crypter, container, null);
-      t.setAppUrl(gadgetURL);
-      t.setModuleId(moduleId);
-      t.setOwnerId(owner);
-      t.setViewerId(viewer);
-      t.setTrustedJson("trusted");
+        Map<String, String> values = new HashMap<String, String>();
+        values.put(Keys.APP_URL.getKey(), gadgetURL);
+        values.put(Keys.MODULE_ID.getKey(), Long.toString(moduleId));
+        values.put(Keys.OWNER.getKey(), owner);
+        values.put(Keys.VIEWER.getKey(), viewer);
+        values.put(Keys.TRUSTED_JSON.getKey(), "trusted");
+        
+      ExoBlobCrypterSecurityToken t = new ExoBlobCrypterSecurityToken(container, null, null, values);
       String portalContainer = PortalContainer.getCurrentPortalContainerName();
       PortalRequestContext portalRequestContext = Util.getPortalRequestContext();
       String url = portalRequestContext.getRequest().getRequestURL().toString();
@@ -67,7 +72,10 @@ public class ExoSocialSecurityTokenGenerator extends ExoDefaultSecurityTokenGene
       t.setPortalContainer(portalContainer);
       t.setHostName(hostName);
       t.setPortalOwner(portalRequestContext.getPortalOwner());
-      return t.encrypt();
+      
+      BlobCrypter crypter = getBlobCrypter();
+
+      return t.getContainer() + ":" + crypter.wrap(t.toMap());
     } catch (Exception e) {
       LOG.error("Failed to generate token for gadget " + gadgetURL + " for owner " + owner, e);
     }
