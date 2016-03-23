@@ -4,26 +4,23 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.util.HashMap;
 import java.util.Random;
 
-import org.chromattic.api.query.QueryBuilder;
-import org.exoplatform.commons.chromattic.ChromatticManager;
+import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.container.PortalContainer;
-import org.exoplatform.container.xml.InitParams;
-import org.exoplatform.container.xml.ValueParam;
 import org.exoplatform.services.bench.DataInjector;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.UserHandler;
-import org.exoplatform.social.common.lifecycle.SocialChromatticLifeCycle;
-import org.exoplatform.social.core.chromattic.entity.IdentityEntity;
-import org.exoplatform.social.core.chromattic.entity.SpaceEntity;
+import org.exoplatform.social.core.identity.model.Identity;
+import org.exoplatform.social.core.identity.provider.OrganizationIdentityProvider;
 import org.exoplatform.social.core.manager.ActivityManager;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.manager.RelationshipManager;
+import org.exoplatform.social.core.profile.ProfileFilter;
+import org.exoplatform.social.core.space.SpaceFilter;
 import org.exoplatform.social.core.space.spi.SpaceService;
 import org.exoplatform.social.core.storage.api.IdentityStorage;
 import org.exoplatform.social.core.storage.impl.AbstractStorage;
-import org.exoplatform.social.core.storage.query.WhereExpression;
 import org.exoplatform.social.extras.injection.utils.LoremIpsum4J;
 import org.exoplatform.social.extras.injection.utils.NameGenerator;
 
@@ -192,29 +189,45 @@ public abstract class AbstractSocialInjector extends DataInjector {
   }
 
   private int userNumber(String base) {
-    PortalContainer container = PortalContainer.getInstance();
-    ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
-    SocialChromatticLifeCycle lifeCycle = (SocialChromatticLifeCycle) manager.getLifeCycle(SocialChromatticLifeCycle.SOCIAL_LIFECYCLE_NAME);
+    ListAccess<Identity> identities = identityManager.getIdentitiesByProfileFilter(OrganizationIdentityProvider.NAME, new ProfileFilter(), false);
     
-    QueryBuilder<IdentityEntity> builder = lifeCycle.getSession().createQueryBuilder(IdentityEntity.class);
-    WhereExpression where = new WhereExpression();
-    where.like(IdentityEntity.remoteId, base + "%")
-    .or().like(IdentityEntity.remoteId, base.toLowerCase() + "%");
-    return builder.where(where.toString()).get().objects().size();
-
+    int num = 0, size = 0;
+    try {
+      size = identities.getSize();
+    } catch (Exception e) {
+      LOG.error(e);
+    }
+    if (size > 0) {
+      int begin = 0, end = size > 100 ? 100 : size;
+      while (begin < end && end <= size) {       
+        try {
+          for (Identity identity : identities.load(begin, end)) {          
+            if (identity.getRemoteId().toLowerCase().startsWith(base.toLowerCase())) {
+              num++;
+            }
+          }          
+        } catch (Exception e) {
+          LOG.error(e);
+          break;
+        }
+        begin = end;
+        end += 100;
+        end = end > size ? size : end;
+      }
+    }
+    return num;
   }
   
   private int spaceNumber(String base) {
-
-    PortalContainer container = PortalContainer.getInstance();
-    ChromatticManager manager = (ChromatticManager) container.getComponentInstanceOfType(ChromatticManager.class);
-    SocialChromatticLifeCycle lifeCycle = (SocialChromatticLifeCycle) manager.getLifeCycle(SocialChromatticLifeCycle.SOCIAL_LIFECYCLE_NAME);
-
-    QueryBuilder<SpaceEntity> builder = lifeCycle.getSession().createQueryBuilder(SpaceEntity.class);
-    WhereExpression where = new WhereExpression();
-    where.like(SpaceEntity.displayName, base + "%");
-    return builder.where(where.toString()).get().objects().size();
-
+    SpaceFilter filter = new SpaceFilter();
+    filter.setSpaceNameSearchCondition(base);
+    
+    try {
+      return spaceService.getAllSpacesByFilter(filter).getSize();      
+    } catch (Exception e) {
+      LOG.error(e);
+      return 0;
+    }
   }
 
   protected String userName() {

@@ -1200,8 +1200,7 @@ public class IdentityStorageImpl extends AbstractStorage implements IdentityStor
     WhereExpression whereExpression = new WhereExpression();
 
     whereExpression
-        .like(JCRProperties.path, getProviderRoot().getProviders().get(
-                                                    providerId).getPath() + StorageUtils.SLASH_STR + StorageUtils.PERCENT_STR)
+        .like(JCRProperties.path, getProviderRoot().getProvider(providerId).getPath() + StorageUtils.SLASH_STR + StorageUtils.PERCENT_STR)
         .and()
         .not().equals(ProfileEntity.deleted, "true");
 
