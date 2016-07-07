@@ -390,6 +390,19 @@
     </depends>
   </module>
   <module>
+    <name>commonMentions</name>
+    <script>
+      <path>/javascript/eXo/common.exomentions.js</path>
+    </script>
+    <depends>
+      <module>jquery</module>
+    </depends>
+    <depends>
+      <module>mentionsLib</module>
+      <as>mentions</as>
+    </depends>
+  </module>
+  <module>
     <name>mentionsLib</name>
     <script>
       <path>/javascript/eXo/underscore.js</path>
