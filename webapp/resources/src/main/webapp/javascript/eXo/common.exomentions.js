@@ -535,7 +535,11 @@
             }
           }
         }
-        currentDataQuery = inputBuffer.slice(triggerCharIndex + 1).join('');
+        if (settings.triggerChar == '') {
+        	currentDataQuery = inputBuffer.join('');	
+        } else {
+        	currentDataQuery = inputBuffer.slice(triggerCharIndex + 1).join('');
+        }
         // fix bug firefox auto added <br> last text.
         currentDataQuery = utils.removeLastBr(currentDataQuery);
         inputBuffer = String(settings.triggerChar+currentDataQuery).split('');
